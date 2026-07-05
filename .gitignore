@@ -5,3 +5,5 @@ __pycache__/
 Thumbs.db
 *.tmp
 *.bak
+*.tiff
+experiments/11_high_precision_reference/smoke_local/
