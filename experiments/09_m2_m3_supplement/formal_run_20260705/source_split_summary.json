@@ -1,0 +1,154 @@
+{
+  "summary": [
+    {
+      "data": "source-test",
+      "method": "plain-FBHF",
+      "err_K_mean": 0.000884123348328103,
+      "err_K_std": 0.0007280614720665177,
+      "err_K_median": 0.0006695888005197048,
+      "oracle_K": 4000,
+      "wall_time_K": 1.3241689465939999,
+      "prox": 1000,
+      "B": 2000,
+      "C": 1000,
+      "network": 0,
+      "backtracks": 0
+    },
+    {
+      "data": "source-test",
+      "method": "Halpern-anchored-FBHF",
+      "err_K_mean": 0.005652429659676272,
+      "err_K_std": 0.0016568512788651556,
+      "err_K_median": 0.005349339451640844,
+      "oracle_K": 4000,
+      "wall_time_K": 1.3676693923771381,
+      "prox": 1000,
+      "B": 2000,
+      "C": 1000,
+      "network": 0,
+      "backtracks": 0
+    },
+    {
+      "data": "source-test",
+      "method": "line-search-FBHF",
+      "err_K_mean": 0.0008211935615918264,
+      "err_K_std": 0.0007049847248758789,
+      "err_K_median": 0.0006083724729251117,
+      "oracle_K": 4526,
+      "wall_time_K": 1.8710314221680164,
+      "prox": 1263,
+      "B": 2263,
+      "C": 1000,
+      "network": 0,
+      "backtracks": 263
+    },
+    {
+      "data": "source-test",
+      "method": "fixed-precond",
+      "err_K_mean": 0.00024374909776270215,
+      "err_K_std": 0.00017280571479579446,
+      "err_K_median": 0.0001833053756854497,
+      "oracle_K": 4000,
+      "wall_time_K": 1.4246917963027954,
+      "prox": 1000,
+      "B": 2000,
+      "C": 1000,
+      "network": 0,
+      "backtracks": 0
+    },
+    {
+      "data": "source-test",
+      "method": "learned-source-split",
+      "err_K_mean": 0.0001335993709972172,
+      "err_K_std": 0.00010588186618294466,
+      "err_K_median": 0.0001020430208882317,
+      "oracle_K": 4000,
+      "wall_time_K": 6.534262429922819,
+      "prox": 1000,
+      "B": 2000,
+      "C": 1000,
+      "network": 1000,
+      "backtracks": 0
+    },
+    {
+      "data": "source-test",
+      "method": "Condat-Vu/PDHG",
+      "err_K_mean": 7.175090411237761e-05,
+      "err_K_std": 4.601103081088409e-05,
+      "err_K_median": 5.857721043867059e-05,
+      "oracle_K": 3999,
+      "wall_time_K": 1.4116880856454372,
+      "prox": 1333,
+      "B": 1333,
+      "C": 1333,
+      "network": 0,
+      "backtracks": 0
+    },
+    {
+      "data": "source-test",
+      "method": "best-tuned-inertial-FBHF",
+      "err_K_mean": 0.0006247924653735026,
+      "err_K_std": 0.0005876555244530617,
+      "err_K_median": 0.000428487837780267,
+      "oracle_K": 4000,
+      "wall_time_K": 0.0,
+      "prox": 1000,
+      "B": 2000,
+      "C": 1000,
+      "network": 0,
+      "backtracks": 0
+    }
+  ],
+  "reference_check": [
+    {
+      "mean_ref_gap": 0.00015545527276117355,
+      "max_ref_gap": 0.0018609835533425212
+    }
+  ],
+  "protocol": {
+    "train_sources": [
+      "camera",
+      "coffee",
+      "astronaut",
+      "coins",
+      "page",
+      "moon",
+      "chelsea",
+      "sails"
+    ],
+    "test_sources": [
+      "barbara",
+      "boat",
+      "peppers",
+      "cameraman_classic",
+      "goldhill",
+      "baboon"
+    ],
+    "source_level_split": true,
+    "augmentations": [
+      "horizontal flip",
+      "vertical flip",
+      "gain in [0.85,1.15]",
+      "bias in [-0.05,0.05]"
+    ],
+    "synthetic_piecewise_rule": "Each image draws 4-8 random rectangles, disks, or sinusoidal stripe components with intensities in [0.15,0.95], then clips to [0,1].",
+    "tv_weight": 0.02,
+    "blur": "train",
+    "noise": "train",
+    "size": 128,
+    "ntest": 64
+  },
+  "inertial_best": {
+    "alpha": 0.2,
+    "tau_factor": 0.95,
+    "tau": 0.3086695979914007,
+    "s": 0.1,
+    "err_K_mean": 0.0006247924653735026,
+    "diverged": false,
+    "prox": 1000,
+    "B": 2000,
+    "C": 1000,
+    "network": 0,
+    "backtracks": 0
+  }
+}

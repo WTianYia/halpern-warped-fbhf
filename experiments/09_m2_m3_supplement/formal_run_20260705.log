@@ -1,0 +1,18 @@
+it    1 loss 9.951919e+00 | source-val learned 1.076541e+01 vs fixed 1.068693e+01 *saved
+it  100 loss 9.444927e+00 | source-val learned 1.064161e+01 vs fixed 1.068693e+01 *saved
+it  200 loss 1.053905e+01 | source-val learned 1.063990e+01 vs fixed 1.068693e+01 *saved
+it  300 loss 9.669748e+00 | source-val learned 1.063477e+01 vs fixed 1.068693e+01 *saved
+it  400 loss 1.120422e+01 | source-val learned 1.063374e+01 vs fixed 1.068693e+01 *saved
+it  500 loss 1.025775e+01 | source-val learned 1.063371e+01 vs fixed 1.068693e+01 *saved
+it  600 loss 9.295196e+00 | source-val learned 1.063160e+01 vs fixed 1.068693e+01 *saved
+it  700 loss 9.914686e+00 | source-val learned 1.063116e+01 vs fixed 1.068693e+01 *saved
+it  800 loss 1.060383e+01 | source-val learned 1.063212e+01 vs fixed 1.068693e+01
+it  900 loss 8.788600e+00 | source-val learned 1.063244e+01 vs fixed 1.068693e+01
+it 1000 loss 9.716888e+00 | source-val learned 1.062963e+01 vs fixed 1.068693e+01 *saved
+it 1100 loss 9.479455e+00 | source-val learned 1.062990e+01 vs fixed 1.068693e+01
+it 1200 loss 8.672705e+00 | source-val learned 1.063010e+01 vs fixed 1.068693e+01
+it 1300 loss 1.033020e+01 | source-val learned 1.062974e+01 vs fixed 1.068693e+01
+it 1400 loss 1.116337e+01 | source-val learned 1.062757e+01 vs fixed 1.068693e+01 *saved
+it 1500 loss 1.061060e+01 | source-val learned 1.062680e+01 vs fixed 1.068693e+01 *saved
+[source-train] best=1.062680e+01 -> experiments/09_m2_m3_supplement/source_split_seed23.pt
+[done] experiments/09_m2_m3_supplement/formal_run_20260705
