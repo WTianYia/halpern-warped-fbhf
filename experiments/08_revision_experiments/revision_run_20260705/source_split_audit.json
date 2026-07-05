@@ -1,0 +1,43 @@
+{
+  "current_formal_train_default": {
+    "data": "real",
+    "image_source_pool": [
+      "astronaut",
+      "baboon",
+      "barbara",
+      "boat",
+      "camera",
+      "cameraman_classic",
+      "chelsea",
+      "coffee",
+      "coins",
+      "goldhill",
+      "moon",
+      "page",
+      "peppers",
+      "sails"
+    ],
+    "source_level_split": false,
+    "note": "The existing checkpoint is trained on random augmented patches drawn from the same standard-image pool used for real-image evaluation. Exact test patches are held out by random seed, but the protocol is patch-level rather than source-image-level."
+  },
+  "recommended_revision_protocol": {
+    "source_level_train": [
+      "camera",
+      "coffee",
+      "astronaut",
+      "coins",
+      "page",
+      "moon",
+      "chelsea",
+      "sails"
+    ],
+    "source_level_test": [
+      "barbara",
+      "boat",
+      "peppers",
+      "cameraman_classic",
+      "goldhill",
+      "baboon"
+    ]
+  }
+}

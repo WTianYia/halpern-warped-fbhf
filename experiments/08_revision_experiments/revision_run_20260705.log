@@ -1,0 +1,3 @@
+[revision-eval] real train train c 0.5
+[revision-eval] synthetic train train c 0.5
+[done] experiments/08_revision_experiments/revision_run_20260705
