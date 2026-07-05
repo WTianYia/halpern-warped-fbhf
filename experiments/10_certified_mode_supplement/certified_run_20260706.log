@@ -1,0 +1,69 @@
+{
+  "device": "cuda",
+  "L_D": 2.8130600452423096,
+  "beta": 1.0,
+  "tau_max": 0.6,
+  "ell_cap": 0.6,
+  "compatibility_cap": 0.7,
+  "compatibility_margin": 0.09999999999999998,
+  "certified": true,
+  "fixed_tau": 0.6,
+  "fixed_s": 0.1,
+  "fixed_ell2": 0.4747984090883199,
+  "ntest": 64,
+  "eval_K": 1000,
+  "ref_iters": 4000
+}
+it     1 loss 1.084452e+01 | val learned 9.931564e+00 vs certified fixed 9.467709e+00 *saved
+it   100 loss 1.057740e+01 | val learned 9.399951e+00 vs certified fixed 9.467709e+00 *saved
+it   200 loss 1.111208e+01 | val learned 9.399652e+00 vs certified fixed 9.467709e+00 *saved
+it   300 loss 8.795400e+00 | val learned 9.399557e+00 vs certified fixed 9.467709e+00 *saved
+it   400 loss 1.113520e+01 | val learned 9.399555e+00 vs certified fixed 9.467709e+00 *saved
+it   500 loss 1.071229e+01 | val learned 9.399554e+00 vs certified fixed 9.467709e+00 *saved
+it   600 loss 9.301210e+00 | val learned 9.399554e+00 vs certified fixed 9.467709e+00
+it   700 loss 9.692546e+00 | val learned 9.399554e+00 vs certified fixed 9.467709e+00
+it   800 loss 9.108147e+00 | val learned 9.399553e+00 vs certified fixed 9.467709e+00 *saved
+it   900 loss 8.685902e+00 | val learned 9.399553e+00 vs certified fixed 9.467709e+00
+it  1000 loss 1.041403e+01 | val learned 9.399553e+00 vs certified fixed 9.467709e+00
+it  1100 loss 9.371326e+00 | val learned 9.399553e+00 vs certified fixed 9.467709e+00
+it  1200 loss 9.810035e+00 | val learned 9.399554e+00 vs certified fixed 9.467709e+00
+it  1300 loss 1.005842e+01 | val learned 9.399553e+00 vs certified fixed 9.467709e+00
+it  1400 loss 1.069703e+01 | val learned 9.399554e+00 vs certified fixed 9.467709e+00
+it  1500 loss 9.494288e+00 | val learned 9.399553e+00 vs certified fixed 9.467709e+00
+{
+  "summary": [
+    {
+      "method": "plain-FBHF",
+      "err_K_mean": 0.0007387462096062336,
+      "err_K_std": 0.0007037554480391322,
+      "err_K_median": 0.0005206779751460999,
+      "oracle_K": 4000,
+      "wall_time_K": 1.450302865356207,
+      "network_forward_K": 0,
+      "max_tau": 0.3090288043022156,
+      "max_ell2": 0.24454396963119507
+    },
+    {
+      "method": "certified-fixed",
+      "err_K_mean": 0.00027995451864626375,
+      "err_K_std": 0.00023869608848143547,
+      "err_K_median": 0.00021387417655205354,
+      "oracle_K": 4000,
+      "wall_time_K": 1.4936485141515732,
+      "network_forward_K": 0,
+      "max_tau": 0.6000000238418579,
+      "max_ell2": 0.47479841113090515
+    },
+    {
+      "method": "certified-learned",
+      "err_K_mean": 0.00026030402966625843,
+      "err_K_std": 0.00024398753529638253,
+      "err_K_median": 0.0001848734391387552,
+      "oracle_K": 4000,
+      "wall_time_K": 6.657719753682613,
+      "network_forward_K": 1000,
+      "max_tau": 0.6000000238418579,
+      "max_ell2": 0.5697581171989441
+    }
+  ]
+}
