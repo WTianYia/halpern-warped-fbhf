@@ -1,0 +1,27 @@
+[REMOTE]
+autodl-container-5e62418054-389cfd62
+Sat Jul  4 20:01:39 CST 2026
+[GPU]
+NVIDIA GeForce RTX 3080 Ti, 12288 MiB, 580.76.05
+[FILES]
+/root/fbhf_trackB_more/s025/README.md	4650 bytes
+/root/fbhf_trackB_more/s025/best_s025.pt	51420 bytes
+/root/fbhf_trackB_more/s025/eval_s025.log	457 bytes
+/root/fbhf_trackB_more/s025/run.nohup	0 bytes
+/root/fbhf_trackB_more/s025/run.sh	548 bytes
+/root/fbhf_trackB_more/s025/run.status	120 bytes
+/root/fbhf_trackB_more/s025/trackB_eval.png	70472 bytes
+/root/fbhf_trackB_more/s025/trackB_eval_s025.png	70472 bytes
+/root/fbhf_trackB_more/s025/trackB_train.py	16814 bytes
+/root/fbhf_trackB_more/s025/train_s025.log	2301 bytes
+/root/fbhf_trackB_more/s09/README.md	4650 bytes
+/root/fbhf_trackB_more/s09/best_s09.pt	51410 bytes
+/root/fbhf_trackB_more/s09/eval_s09.log	457 bytes
+/root/fbhf_trackB_more/s09/run.nohup	0 bytes
+/root/fbhf_trackB_more/s09/run.sh	540 bytes
+/root/fbhf_trackB_more/s09/run.status	120 bytes
+/root/fbhf_trackB_more/s09/trackB_eval.png	71777 bytes
+/root/fbhf_trackB_more/s09/trackB_eval_s09.png	71777 bytes
+/root/fbhf_trackB_more/s09/trackB_train.py	16814 bytes
+/root/fbhf_trackB_more/s09/train_s09.log	2230 bytes
+[PROCS]

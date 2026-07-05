@@ -1,0 +1,11 @@
+device: cuda
+
+方法                           err@K/2     err@K   PSNR@K
+plain                     7.21e-02  4.32e-02    28.15
+linesearch                7.03e-02  4.07e-02    28.17
+inertial(α=0.2,γ=0.227)   7.53e-02  4.70e-02    28.11
+momentum-dev              7.45e-02  5.86e-02    27.24
+learned-dev(ours)         1.42e-02  9.16e-03    28.43
+图存 trackB_eval.png
+
+判据: 'learned-dev' 的 err@K / PSNR@K 是否稳定优于 linesearch 与 inertial。

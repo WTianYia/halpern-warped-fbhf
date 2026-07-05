@@ -1,0 +1,178 @@
+{
+  "remote_base": "/root/fbhf_full_exp_20260704_213227",
+  "downloaded_at": "2026-07-04 22:30:24",
+  "files": [
+    {
+      "file": "trackB_warped_train.py",
+      "bytes": 13052
+    },
+    {
+      "file": "run_full.sh",
+      "bytes": 1343
+    },
+    {
+      "file": "launcher.log",
+      "bytes": 0
+    },
+    {
+      "file": "full_run.log",
+      "bytes": 6033
+    },
+    {
+      "file": "selftest.log",
+      "bytes": 194
+    },
+    {
+      "file": "train_bv.log",
+      "bytes": 2445
+    },
+    {
+      "file": "wbv_seed11.pt",
+      "bytes": 50278
+    },
+    {
+      "file": "eval_bv.log",
+      "bytes": 372
+    },
+    {
+      "file": "curves_bv.csv",
+      "bytes": 52626
+    },
+    {
+      "file": "metrics_bv.json",
+      "bytes": 409
+    },
+    {
+      "file": "eval_bv_quick.png",
+      "bytes": 57816
+    },
+    {
+      "file": "eval_bv_raw.png",
+      "bytes": 57816
+    },
+    {
+      "file": "train_free.log",
+      "bytes": 2449
+    },
+    {
+      "file": "wfree_seed11.pt",
+      "bytes": 50298
+    },
+    {
+      "file": "eval_free.log",
+      "bytes": 380
+    },
+    {
+      "file": "curves_free.csv",
+      "bytes": 54992
+    },
+    {
+      "file": "metrics_free.json",
+      "bytes": 411
+    },
+    {
+      "file": "eval_free_quick.png",
+      "bytes": 58616
+    },
+    {
+      "file": "eval_free_raw.png",
+      "bytes": 58616
+    },
+    {
+      "file": "eval_bv_20240705.log",
+      "bytes": 393
+    },
+    {
+      "file": "curves_bv_20240705.csv",
+      "bytes": 53036
+    },
+    {
+      "file": "metrics_bv_20240705.json",
+      "bytes": 409
+    },
+    {
+      "file": "eval_bv_20240705.png",
+      "bytes": 57556
+    },
+    {
+      "file": "eval_free_20240705.log",
+      "bytes": 401
+    },
+    {
+      "file": "curves_free_20240705.csv",
+      "bytes": 55413
+    },
+    {
+      "file": "metrics_free_20240705.json",
+      "bytes": 413
+    },
+    {
+      "file": "eval_free_20240705.png",
+      "bytes": 58487
+    },
+    {
+      "file": "eval_bv_20240706.log",
+      "bytes": 393
+    },
+    {
+      "file": "curves_bv_20240706.csv",
+      "bytes": 52625
+    },
+    {
+      "file": "metrics_bv_20240706.json",
+      "bytes": 412
+    },
+    {
+      "file": "eval_bv_20240706.png",
+      "bytes": 56266
+    },
+    {
+      "file": "eval_free_20240706.log",
+      "bytes": 401
+    },
+    {
+      "file": "curves_free_20240706.csv",
+      "bytes": 55044
+    },
+    {
+      "file": "metrics_free_20240706.json",
+      "bytes": 414
+    },
+    {
+      "file": "eval_free_20240706.png",
+      "bytes": 57228
+    },
+    {
+      "file": "eval_bv_20240707.log",
+      "bytes": 393
+    },
+    {
+      "file": "curves_bv_20240707.csv",
+      "bytes": 52621
+    },
+    {
+      "file": "metrics_bv_20240707.json",
+      "bytes": 407
+    },
+    {
+      "file": "eval_bv_20240707.png",
+      "bytes": 56355
+    },
+    {
+      "file": "eval_free_20240707.log",
+      "bytes": 401
+    },
+    {
+      "file": "curves_free_20240707.csv",
+      "bytes": 55007
+    },
+    {
+      "file": "metrics_free_20240707.json",
+      "bytes": 410
+    },
+    {
+      "file": "eval_free_20240707.png",
+      "bytes": 58168
+    }
+  ]
+}

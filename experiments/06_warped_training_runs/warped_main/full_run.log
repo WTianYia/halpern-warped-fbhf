@@ -1,0 +1,95 @@
+[full-run] start Sat Jul  4 21:32:33 CST 2026
+[full-run] selftest
+device: cuda mode: bv
+[伴随] |<Kx,z>-<x,Ktz>|=1.91e-06  |<Dx,p>-<x,Dtp>|=9.54e-06
+[常数] ‖D‖=2.816  χ≈0.3250  阈值 1/χ≈3.077
+[warped 收敛] obj 3.447 -> 1.912 (应显著下降)
+[full-run] train bv
+device: cuda mode: bv
+it  100 loss4.604 | val learned 3.913 vs fixed-precond 4.363 (gain +0.450) *saved
+it  200 loss4.362 | val learned 3.902 vs fixed-precond 4.363 (gain +0.461) *saved
+it  300 loss4.544 | val learned 3.900 vs fixed-precond 4.363 (gain +0.463) *saved
+it  400 loss4.612 | val learned 3.898 vs fixed-precond 4.363 (gain +0.465) *saved
+it  500 loss4.963 | val learned 3.895 vs fixed-precond 4.363 (gain +0.468) *saved
+it  600 loss4.365 | val learned 3.895 vs fixed-precond 4.363 (gain +0.468) *saved
+it  700 loss4.814 | val learned 3.891 vs fixed-precond 4.363 (gain +0.472) *saved
+it  800 loss4.631 | val learned 3.888 vs fixed-precond 4.363 (gain +0.475) *saved
+it  900 loss4.689 | val learned 3.886 vs fixed-precond 4.363 (gain +0.477) *saved
+it 1000 loss4.670 | val learned 3.887 vs fixed-precond 4.363 (gain +0.476)
+it 1100 loss4.378 | val learned 3.886 vs fixed-precond 4.363 (gain +0.477) *saved
+it 1200 loss4.772 | val learned 3.886 vs fixed-precond 4.363 (gain +0.477) *saved
+it 1300 loss4.376 | val learned 3.885 vs fixed-precond 4.363 (gain +0.478) *saved
+it 1400 loss4.431 | val learned 3.886 vs fixed-precond 4.363 (gain +0.477)
+it 1500 loss4.384 | val learned 3.885 vs fixed-precond 4.363 (gain +0.478) *saved
+it 1600 loss4.420 | val learned 3.884 vs fixed-precond 4.363 (gain +0.479) *saved
+it 1700 loss4.948 | val learned 3.885 vs fixed-precond 4.363 (gain +0.478)
+it 1800 loss4.308 | val learned 3.886 vs fixed-precond 4.363 (gain +0.477)
+it 1900 loss4.426 | val learned 3.884 vs fixed-precond 4.363 (gain +0.479) *saved
+it 2000 loss4.956 | val learned 3.884 vs fixed-precond 4.363 (gain +0.479) *saved
+it 2100 loss4.501 | val learned 3.884 vs fixed-precond 4.363 (gain +0.479)
+it 2200 loss4.269 | val learned 3.883 vs fixed-precond 4.363 (gain +0.480) *saved
+it 2300 loss4.694 | val learned 3.885 vs fixed-precond 4.363 (gain +0.478)
+it 2400 loss4.270 | val learned 3.883 vs fixed-precond 4.363 (gain +0.480) *saved
+it 2500 loss4.290 | val learned 3.883 vs fixed-precond 4.363 (gain +0.480)
+it 2600 loss4.415 | val learned 3.884 vs fixed-precond 4.363 (gain +0.479)
+it 2700 loss4.092 | val learned 3.884 vs fixed-precond 4.363 (gain +0.479)
+it 2800 loss4.188 | val learned 3.883 vs fixed-precond 4.363 (gain +0.480)
+it 2900 loss4.554 | val learned 3.882 vs fixed-precond 4.363 (gain +0.481) *saved
+it 3000 loss4.254 | val learned 3.882 vs fixed-precond 4.363 (gain +0.481) *saved
+done best=3.882 -> wbv_seed11.pt
+[full-run] eval bv
+device: cuda mode: bv
+method                       err@K/2     err@K
+plain-FBHF                  3.69e-02  1.75e-02
+fixed-precond               6.78e-03  3.54e-03
+learned-warped(ours)        4.48e-03  2.35e-03
+saved curves_bv.csv
+saved metrics_bv.json
+saved eval_bv_quick.png
+
+判据: learned-warped 是否稳定优于 fixed-precond 与 plain。mode=bv 时收敛可证。
+[full-run] train free
+device: cuda mode: free
+it  100 loss4.620 | val learned 3.918 vs fixed-precond 4.363 (gain +0.445) *saved
+it  200 loss4.370 | val learned 3.904 vs fixed-precond 4.363 (gain +0.459) *saved
+it  300 loss4.551 | val learned 3.902 vs fixed-precond 4.363 (gain +0.461) *saved
+it  400 loss4.621 | val learned 3.898 vs fixed-precond 4.363 (gain +0.465) *saved
+it  500 loss4.980 | val learned 3.896 vs fixed-precond 4.363 (gain +0.467) *saved
+it  600 loss4.368 | val learned 3.894 vs fixed-precond 4.363 (gain +0.469) *saved
+it  700 loss4.800 | val learned 3.889 vs fixed-precond 4.363 (gain +0.474) *saved
+it  800 loss4.617 | val learned 3.885 vs fixed-precond 4.363 (gain +0.478) *saved
+it  900 loss4.672 | val learned 3.887 vs fixed-precond 4.363 (gain +0.476)
+it 1000 loss4.653 | val learned 3.885 vs fixed-precond 4.363 (gain +0.478)
+it 1100 loss4.367 | val learned 3.884 vs fixed-precond 4.363 (gain +0.479) *saved
+it 1200 loss4.745 | val learned 3.885 vs fixed-precond 4.363 (gain +0.478)
+it 1300 loss4.361 | val learned 3.883 vs fixed-precond 4.363 (gain +0.480) *saved
+it 1400 loss4.415 | val learned 3.881 vs fixed-precond 4.363 (gain +0.482) *saved
+it 1500 loss4.358 | val learned 3.881 vs fixed-precond 4.363 (gain +0.482)
+it 1600 loss4.389 | val learned 3.879 vs fixed-precond 4.363 (gain +0.484) *saved
+it 1700 loss4.926 | val learned 3.881 vs fixed-precond 4.363 (gain +0.482)
+it 1800 loss4.276 | val learned 3.879 vs fixed-precond 4.363 (gain +0.484)
+it 1900 loss4.410 | val learned 3.878 vs fixed-precond 4.363 (gain +0.485) *saved
+it 2000 loss4.943 | val learned 3.878 vs fixed-precond 4.363 (gain +0.485)
+it 2100 loss4.452 | val learned 3.879 vs fixed-precond 4.363 (gain +0.484)
+it 2200 loss4.243 | val learned 3.876 vs fixed-precond 4.363 (gain +0.486) *saved
+it 2300 loss4.657 | val learned 3.874 vs fixed-precond 4.363 (gain +0.489) *saved
+it 2400 loss4.216 | val learned 3.869 vs fixed-precond 4.363 (gain +0.494) *saved
+it 2500 loss4.238 | val learned 3.868 vs fixed-precond 4.363 (gain +0.495) *saved
+it 2600 loss4.360 | val learned 3.875 vs fixed-precond 4.363 (gain +0.488)
+it 2700 loss4.030 | val learned 3.866 vs fixed-precond 4.363 (gain +0.497) *saved
+it 2800 loss4.122 | val learned 3.871 vs fixed-precond 4.363 (gain +0.492)
+it 2900 loss4.489 | val learned 3.865 vs fixed-precond 4.363 (gain +0.498) *saved
+it 3000 loss4.178 | val learned 3.865 vs fixed-precond 4.363 (gain +0.498) *saved
+done best=3.865 -> wfree_seed11.pt
+[full-run] eval free
+device: cuda mode: free
+method                       err@K/2     err@K
+plain-FBHF                  3.69e-02  1.75e-02
+fixed-precond               6.78e-03  3.54e-03
+learned-warped(ours)        4.54e-03  2.30e-03
+saved curves_free.csv
+saved metrics_free.json
+saved eval_free_quick.png
+
+判据: learned-warped 是否稳定优于 fixed-precond 与 plain。mode=bv 时收敛可证。
+[full-run] done Sat Jul  4 22:22:18 CST 2026

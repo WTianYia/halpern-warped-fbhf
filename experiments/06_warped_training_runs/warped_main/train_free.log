@@ -1,0 +1,32 @@
+device: cuda mode: free
+it  100 loss4.620 | val learned 3.918 vs fixed-precond 4.363 (gain +0.445) *saved
+it  200 loss4.370 | val learned 3.904 vs fixed-precond 4.363 (gain +0.459) *saved
+it  300 loss4.551 | val learned 3.902 vs fixed-precond 4.363 (gain +0.461) *saved
+it  400 loss4.621 | val learned 3.898 vs fixed-precond 4.363 (gain +0.465) *saved
+it  500 loss4.980 | val learned 3.896 vs fixed-precond 4.363 (gain +0.467) *saved
+it  600 loss4.368 | val learned 3.894 vs fixed-precond 4.363 (gain +0.469) *saved
+it  700 loss4.800 | val learned 3.889 vs fixed-precond 4.363 (gain +0.474) *saved
+it  800 loss4.617 | val learned 3.885 vs fixed-precond 4.363 (gain +0.478) *saved
+it  900 loss4.672 | val learned 3.887 vs fixed-precond 4.363 (gain +0.476)
+it 1000 loss4.653 | val learned 3.885 vs fixed-precond 4.363 (gain +0.478)
+it 1100 loss4.367 | val learned 3.884 vs fixed-precond 4.363 (gain +0.479) *saved
+it 1200 loss4.745 | val learned 3.885 vs fixed-precond 4.363 (gain +0.478)
+it 1300 loss4.361 | val learned 3.883 vs fixed-precond 4.363 (gain +0.480) *saved
+it 1400 loss4.415 | val learned 3.881 vs fixed-precond 4.363 (gain +0.482) *saved
+it 1500 loss4.358 | val learned 3.881 vs fixed-precond 4.363 (gain +0.482)
+it 1600 loss4.389 | val learned 3.879 vs fixed-precond 4.363 (gain +0.484) *saved
+it 1700 loss4.926 | val learned 3.881 vs fixed-precond 4.363 (gain +0.482)
+it 1800 loss4.276 | val learned 3.879 vs fixed-precond 4.363 (gain +0.484)
+it 1900 loss4.410 | val learned 3.878 vs fixed-precond 4.363 (gain +0.485) *saved
+it 2000 loss4.943 | val learned 3.878 vs fixed-precond 4.363 (gain +0.485)
+it 2100 loss4.452 | val learned 3.879 vs fixed-precond 4.363 (gain +0.484)
+it 2200 loss4.243 | val learned 3.876 vs fixed-precond 4.363 (gain +0.486) *saved
+it 2300 loss4.657 | val learned 3.874 vs fixed-precond 4.363 (gain +0.489) *saved
+it 2400 loss4.216 | val learned 3.869 vs fixed-precond 4.363 (gain +0.494) *saved
+it 2500 loss4.238 | val learned 3.868 vs fixed-precond 4.363 (gain +0.495) *saved
+it 2600 loss4.360 | val learned 3.875 vs fixed-precond 4.363 (gain +0.488)
+it 2700 loss4.030 | val learned 3.866 vs fixed-precond 4.363 (gain +0.497) *saved
+it 2800 loss4.122 | val learned 3.871 vs fixed-precond 4.363 (gain +0.492)
+it 2900 loss4.489 | val learned 3.865 vs fixed-precond 4.363 (gain +0.498) *saved
+it 3000 loss4.178 | val learned 3.865 vs fixed-precond 4.363 (gain +0.498) *saved
+done best=3.865 -> wfree_seed11.pt

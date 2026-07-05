@@ -1,0 +1,50 @@
+{
+  "remote_base": "/root/fbhf_trackB_warped_20260704_201955",
+  "downloaded_at": "2026-07-04 21:15:27",
+  "files": [
+    {
+      "file": "trackB_warped_train.py",
+      "bytes": 11434
+    },
+    {
+      "file": "train_bv.log",
+      "bytes": 2431
+    },
+    {
+      "file": "wbv.pt",
+      "bytes": 49888
+    },
+    {
+      "file": "eval_bv.log",
+      "bytes": 335
+    },
+    {
+      "file": "trackB_warped_eval.png",
+      "bytes": 59734
+    },
+    {
+      "file": "wfree_smoke.pt",
+      "bytes": 50288
+    },
+    {
+      "file": "train_free.log",
+      "bytes": 2463
+    },
+    {
+      "file": "wfree.pt",
+      "bytes": 49908
+    },
+    {
+      "file": "trackB_warped_eval_bv.png",
+      "bytes": 58342
+    },
+    {
+      "file": "eval_free.log",
+      "bytes": 337
+    },
+    {
+      "file": "trackB_warped_eval_free.png",
+      "bytes": 59734
+    }
+  ]
+}

@@ -1,0 +1,276 @@
+{
+  "root": "C:\\Users\\33084\\Desktop\\唐玉超老师的文章\\06_锚定FBHF定稿方案\\trackB_训练实验\\final_experiment_package\\formal_oracle64_std_classic",
+  "file_count": 54,
+  "files": [
+    {
+      "file": "cscan_real/curves_formal.csv",
+      "bytes": 1150122,
+      "sha256_16": "58d7effae6cf75ae"
+    },
+    {
+      "file": "cscan_real/per_image_endpoint_errors.csv",
+      "bytes": 59245,
+      "sha256_16": "1225e75d117c77a6"
+    },
+    {
+      "file": "cscan_real/per_image_endpoint_errors_partial.csv",
+      "bytes": 59245,
+      "sha256_16": "1225e75d117c77a6"
+    },
+    {
+      "file": "cscan_real/summary_formal.json",
+      "bytes": 5100,
+      "sha256_16": "ec58bae8828f35e0"
+    },
+    {
+      "file": "cscan_real/summary_partial.json",
+      "bytes": 5100,
+      "sha256_16": "ec58bae8828f35e0"
+    },
+    {
+      "file": "cscan_real.log",
+      "bytes": 318,
+      "sha256_16": "79c0bd2c985e0b35"
+    },
+    {
+      "file": "figures_oracle_meanstd/fig1_oracle_curves_meanstd.pdf",
+      "bytes": 40114,
+      "sha256_16": "01d88e67dafa811d"
+    },
+    {
+      "file": "figures_oracle_meanstd/fig1_oracle_curves_meanstd.png",
+      "bytes": 335551,
+      "sha256_16": "652279f7233a5af0"
+    },
+    {
+      "file": "figures_oracle_meanstd/fig1_oracle_curves_meanstd.svg",
+      "bytes": 81355,
+      "sha256_16": "4e37996bb23bef5c"
+    },
+    {
+      "file": "figures_oracle_meanstd/fig1_oracle_curves_meanstd.tiff",
+      "bytes": 55448134,
+      "sha256_16": null
+    },
+    {
+      "file": "figures_oracle_meanstd/fig2_cscan_meanstd.pdf",
+      "bytes": 28633,
+      "sha256_16": "13f18ad1b7dfedf5"
+    },
+    {
+      "file": "figures_oracle_meanstd/fig2_cscan_meanstd.png",
+      "bytes": 54281,
+      "sha256_16": "74e55d24fab4ccf9"
+    },
+    {
+      "file": "figures_oracle_meanstd/fig2_cscan_meanstd.svg",
+      "bytes": 19334,
+      "sha256_16": "c8c3f6afea4c414f"
+    },
+    {
+      "file": "figures_oracle_meanstd/fig2_cscan_meanstd.tiff",
+      "bytes": 12216590,
+      "sha256_16": null
+    },
+    {
+      "file": "figures_oracle_meanstd/fig3_ood_ratios.pdf",
+      "bytes": 24094,
+      "sha256_16": "a316dba46f93839e"
+    },
+    {
+      "file": "figures_oracle_meanstd/fig3_ood_ratios.png",
+      "bytes": 52934,
+      "sha256_16": "a33b3e3a4987e416"
+    },
+    {
+      "file": "figures_oracle_meanstd/fig3_ood_ratios.svg",
+      "bytes": 22878,
+      "sha256_16": "f2f24caf7803a5e2"
+    },
+    {
+      "file": "figures_oracle_meanstd/fig3_ood_ratios.tiff",
+      "bytes": 22200942,
+      "sha256_16": null
+    },
+    {
+      "file": "figures_oracle_meanstd/source_data_fig1_oracle_curves_meanstd.csv",
+      "bytes": 1333995,
+      "sha256_16": "fdee39bdd905e303"
+    },
+    {
+      "file": "figures_oracle_meanstd/source_data_fig2_cscan_meanstd.csv",
+      "bytes": 334,
+      "sha256_16": "5e277fd1b564a8dc"
+    },
+    {
+      "file": "figures_oracle_meanstd/source_data_fig3_ood_ratios.csv",
+      "bytes": 381,
+      "sha256_16": "a4ad315ba0c78853"
+    },
+    {
+      "file": "figures_oracle_meanstd/table_mean_std_all.csv",
+      "bytes": 5737,
+      "sha256_16": "c1621d6cbb3bee7f"
+    },
+    {
+      "file": "figures_oracle_meanstd/table_mean_std_selected.csv",
+      "bytes": 1394,
+      "sha256_16": "ce13b450aface2fb"
+    },
+    {
+      "file": "figures_oracle_meanstd/table_mean_std_selected.md",
+      "bytes": 1544,
+      "sha256_16": "f2c24d7ac4f6b5f9"
+    },
+    {
+      "file": "formal_oracle64_std_classic_master.log",
+      "bytes": 4389,
+      "sha256_16": "d6f25f9eda3716d1"
+    },
+    {
+      "file": "main_real_synth/curves_formal.csv",
+      "bytes": 780503,
+      "sha256_16": "0a3d6ff2adb72069"
+    },
+    {
+      "file": "main_real_synth/per_image_endpoint_errors.csv",
+      "bytes": 40411,
+      "sha256_16": "68b8cccdc7f8e785"
+    },
+    {
+      "file": "main_real_synth/per_image_endpoint_errors_partial.csv",
+      "bytes": 40411,
+      "sha256_16": "68b8cccdc7f8e785"
+    },
+    {
+      "file": "main_real_synth/summary_formal.json",
+      "bytes": 3398,
+      "sha256_16": "d44f1910659aefb2"
+    },
+    {
+      "file": "main_real_synth/summary_partial.json",
+      "bytes": 3398,
+      "sha256_16": "d44f1910659aefb2"
+    },
+    {
+      "file": "main_real_synth.log",
+      "bytes": 299,
+      "sha256_16": "16501973200dd6cd"
+    },
+    {
+      "file": "manifest.json",
+      "bytes": 7297,
+      "sha256_16": "b25f46f8b9587603"
+    },
+    {
+      "file": "motion_adapt/curves_formal.csv",
+      "bytes": 381347,
+      "sha256_16": "4e67c201f6128558"
+    },
+    {
+      "file": "motion_adapt/per_image_endpoint_errors.csv",
+      "bytes": 19689,
+      "sha256_16": "3cd9031be04133aa"
+    },
+    {
+      "file": "motion_adapt/per_image_endpoint_errors_partial.csv",
+      "bytes": 19689,
+      "sha256_16": "3cd9031be04133aa"
+    },
+    {
+      "file": "motion_adapt/summary_formal.json",
+      "bytes": 1697,
+      "sha256_16": "00a4aa198b5cbe27"
+    },
+    {
+      "file": "motion_adapt/summary_partial.json",
+      "bytes": 1697,
+      "sha256_16": "00a4aa198b5cbe27"
+    },
+    {
+      "file": "motion_adapt.log",
+      "bytes": 247,
+      "sha256_16": "bd9795eea5cbd317"
+    },
+    {
+      "file": "ood_blur_real/curves_formal.csv",
+      "bytes": 1128071,
+      "sha256_16": "5328c008f6e9984a"
+    },
+    {
+      "file": "ood_blur_real/per_image_endpoint_errors.csv",
+      "bytes": 57753,
+      "sha256_16": "6836e08304caeee1"
+    },
+    {
+      "file": "ood_blur_real/per_image_endpoint_errors_partial.csv",
+      "bytes": 57753,
+      "sha256_16": "6836e08304caeee1"
+    },
+    {
+      "file": "ood_blur_real/summary_formal.json",
+      "bytes": 5068,
+      "sha256_16": "efd056eba39b35d7"
+    },
+    {
+      "file": "ood_blur_real/summary_partial.json",
+      "bytes": 5068,
+      "sha256_16": "efd056eba39b35d7"
+    },
+    {
+      "file": "ood_blur_real.log",
+      "bytes": 322,
+      "sha256_16": "83d6ff2da1dfb5ca"
+    },
+    {
+      "file": "ood_noise_real/curves_formal.csv",
+      "bytes": 751390,
+      "sha256_16": "76cacf59576ac8db"
+    },
+    {
+      "file": "ood_noise_real/per_image_endpoint_errors.csv",
+      "bytes": 38537,
+      "sha256_16": "c2f277f86925ca6d"
+    },
+    {
+      "file": "ood_noise_real/per_image_endpoint_errors_partial.csv",
+      "bytes": 38537,
+      "sha256_16": "c2f277f86925ca6d"
+    },
+    {
+      "file": "ood_noise_real/summary_formal.json",
+      "bytes": 3382,
+      "sha256_16": "50d1763fb8e4588b"
+    },
+    {
+      "file": "ood_noise_real/summary_partial.json",
+      "bytes": 3382,
+      "sha256_16": "50d1763fb8e4588b"
+    },
+    {
+      "file": "ood_noise_real.log",
+      "bytes": 288,
+      "sha256_16": "434a290dcc00a4dd"
+    },
+    {
+      "file": "run_oracle_std_classic.sh",
+      "bytes": 2041,
+      "sha256_16": "3d32eef84126c5ce"
+    },
+    {
+      "file": "train_motion_classic.log",
+      "bytes": 2799,
+      "sha256_16": "6d50e3871c31f2e7"
+    },
+    {
+      "file": "wbv_motion_classic_seed11.pt",
+      "bytes": 50492,
+      "sha256_16": "c4192874d05b7000"
+    },
+    {
+      "file": "wbv_seed11.pt",
+      "bytes": 50278,
+      "sha256_16": "d3bca6e1d84a6454"
+    }
+  ]
+}

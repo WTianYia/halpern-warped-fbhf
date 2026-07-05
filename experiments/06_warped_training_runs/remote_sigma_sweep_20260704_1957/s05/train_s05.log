@@ -1,0 +1,32 @@
+device: cuda
+it  100 train4.006 | val learned 4.124 vs plain 4.259 (gain +0.136) *saved
+it  200 train3.980 | val learned 4.109 vs plain 4.259 (gain +0.151) *saved
+it  300 train3.957 | val learned 4.105 vs plain 4.259 (gain +0.155) *saved
+it  400 train3.956 | val learned 4.103 vs plain 4.259 (gain +0.157) *saved
+it  500 train3.949 | val learned 4.101 vs plain 4.259 (gain +0.158) *saved
+it  600 train3.948 | val learned 4.096 vs plain 4.259 (gain +0.164) *saved
+it  700 train3.959 | val learned 4.096 vs plain 4.259 (gain +0.164) *saved
+it  800 train3.937 | val learned 4.092 vs plain 4.259 (gain +0.167) *saved
+it  900 train3.938 | val learned 4.091 vs plain 4.259 (gain +0.168) *saved
+it 1000 train3.932 | val learned 4.090 vs plain 4.259 (gain +0.170) *saved
+it 1100 train3.936 | val learned 4.090 vs plain 4.259 (gain +0.170)
+it 1200 train3.922 | val learned 4.087 vs plain 4.259 (gain +0.173) *saved
+it 1300 train3.922 | val learned 4.088 vs plain 4.259 (gain +0.172)
+it 1400 train3.921 | val learned 4.085 vs plain 4.259 (gain +0.174) *saved
+it 1500 train3.929 | val learned 4.087 vs plain 4.259 (gain +0.173)
+it 1600 train3.929 | val learned 4.103 vs plain 4.259 (gain +0.156)
+it 1700 train3.930 | val learned 4.086 vs plain 4.259 (gain +0.173)
+it 1800 train3.926 | val learned 4.086 vs plain 4.259 (gain +0.173)
+it 1900 train3.921 | val learned 151075.094 vs plain 4.259 (gain -151070.834)
+it 2000 train3.888 | val learned 4.073 vs plain 4.259 (gain +0.187) *saved
+it 2100 train3.869 | val learned 4.068 vs plain 4.259 (gain +0.191) *saved
+it 2200 train3.873 | val learned 4.069 vs plain 4.259 (gain +0.191)
+it 2300 train3.869 | val learned 4.069 vs plain 4.259 (gain +0.190)
+it 2400 train3.858 | val learned 4.067 vs plain 4.259 (gain +0.193) *saved
+it 2500 train3.860 | val learned 4.066 vs plain 4.259 (gain +0.193) *saved
+it 2600 train3.854 | val learned 4.067 vs plain 4.259 (gain +0.192)
+it 2700 train3.868 | val learned 4.071 vs plain 4.259 (gain +0.188)
+it 2800 train3.852 | val learned 4.067 vs plain 4.259 (gain +0.192)
+it 2900 train3.859 | val learned 4.064 vs plain 4.259 (gain +0.196) *saved
+it 3000 train3.859 | val learned 4.064 vs plain 4.259 (gain +0.195)
+训练完成，best val obj=4.064，权重存 best_s05.pt

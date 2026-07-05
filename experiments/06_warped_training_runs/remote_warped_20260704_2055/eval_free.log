@@ -1,0 +1,8 @@
+device: cuda mode: free
+method                       err@K/2     err@K
+plain-FBHF                  3.05e-02  7.71e-03
+fixed-precond               5.73e-03  3.70e-03
+learned-warped(ours)        4.34e-03  2.53e-03
+saved trackB_warped_eval.png
+
+判据: learned-warped 是否稳定优于 fixed-precond 与 plain。mode=bv 时收敛可证。
