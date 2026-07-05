@@ -1,0 +1,160 @@
+{
+  "summary": [
+    {
+      "data": "source-test",
+      "method": "plain-FBHF",
+      "err_K_mean": 0.000984876786787936,
+      "err_K_std": 0.0008588498679027713,
+      "err_K_median": 0.0007047097315080464,
+      "oracle_K": 4000,
+      "wall_time_K": 1.2402744740247726,
+      "prox": 1000,
+      "B": 2000,
+      "C": 1000,
+      "network": 0,
+      "backtracks": 0
+    },
+    {
+      "data": "source-test",
+      "method": "Halpern-anchored-FBHF",
+      "err_K_mean": 0.005684269293851685,
+      "err_K_std": 0.0016838594020436486,
+      "err_K_median": 0.0053781073074787855,
+      "oracle_K": 4000,
+      "wall_time_K": 1.3372066728770733,
+      "prox": 1000,
+      "B": 2000,
+      "C": 1000,
+      "network": 0,
+      "backtracks": 0
+    },
+    {
+      "data": "source-test",
+      "method": "line-search-FBHF",
+      "err_K_mean": 0.0009202300635706706,
+      "err_K_std": 0.0008398043495659831,
+      "err_K_median": 0.000653898372547701,
+      "oracle_K": 4526,
+      "wall_time_K": 1.7784417942166328,
+      "prox": 1263,
+      "B": 2263,
+      "C": 1000,
+      "network": 0,
+      "backtracks": 263
+    },
+    {
+      "data": "source-test",
+      "method": "fixed-precond",
+      "err_K_mean": 0.0003098512972883327,
+      "err_K_std": 0.00028355958482622804,
+      "err_K_median": 0.00022661076218355447,
+      "oracle_K": 4000,
+      "wall_time_K": 1.2400661781430244,
+      "prox": 1000,
+      "B": 2000,
+      "C": 1000,
+      "network": 0,
+      "backtracks": 0
+    },
+    {
+      "data": "source-test",
+      "method": "learned-source-split",
+      "err_K_mean": 0.00025149002334501347,
+      "err_K_std": 0.0003066040039126445,
+      "err_K_median": 0.00014194445247994736,
+      "oracle_K": 4000,
+      "wall_time_K": 6.535549473017454,
+      "prox": 1000,
+      "B": 2000,
+      "C": 1000,
+      "network": 1000,
+      "backtracks": 0
+    },
+    {
+      "data": "source-test",
+      "method": "Condat-Vu/PDHG",
+      "err_K_mean": 0.00018408292623917077,
+      "err_K_std": 0.0002702832762607779,
+      "err_K_median": 9.014422539621592e-05,
+      "oracle_K": 3999,
+      "wall_time_K": 1.2168283984065056,
+      "prox": 1333,
+      "B": 1333,
+      "C": 1333,
+      "network": 0,
+      "backtracks": 0
+    },
+    {
+      "data": "source-test",
+      "method": "best-tuned-inertial-FBHF",
+      "err_K_mean": 0.0007380602939974779,
+      "err_K_std": 0.0007430302450316627,
+      "err_K_median": 0.0004818838060600683,
+      "oracle_K": 4000,
+      "wall_time_K": 0.0,
+      "prox": 1000,
+      "B": 2000,
+      "C": 1000,
+      "network": 0,
+      "backtracks": 0
+    }
+  ],
+  "reference_check": [
+    {
+      "mean_ref_gap": 1.1706160876201466e-06,
+      "median_ref_gap": 1.0545381883275695e-06,
+      "max_ref_gap": 2.8806434784200974e-06,
+      "old_fbhf_ref_gap_mean": 0.0001613924978300929,
+      "old_fbhf_ref_gap_max": 0.0018760666716843843,
+      "reference": "PDHG",
+      "pdhg_ref_iters": 100000,
+      "fbhf_ref_iters_for_gap_only": 4000
+    }
+  ],
+  "protocol": {
+    "train_sources": [
+      "camera",
+      "coffee",
+      "astronaut",
+      "coins",
+      "page",
+      "moon",
+      "chelsea",
+      "sails"
+    ],
+    "test_sources": [
+      "barbara",
+      "boat",
+      "peppers",
+      "cameraman_classic",
+      "goldhill",
+      "baboon"
+    ],
+    "source_level_split": true,
+    "augmentations": [
+      "horizontal flip",
+      "vertical flip",
+      "gain in [0.85,1.15]",
+      "bias in [-0.05,0.05]"
+    ],
+    "synthetic_piecewise_rule": "Each image draws 4-8 random rectangles, disks, or sinusoidal stripe components with intensities in [0.15,0.95], then clips to [0,1].",
+    "tv_weight": 0.02,
+    "blur": "train",
+    "noise": "train",
+    "size": 128,
+    "ntest": 64
+  },
+  "inertial_best": {
+    "alpha": 0.2,
+    "tau_factor": 0.95,
+    "tau": 0.3086695979914007,
+    "s": 0.1,
+    "err_K_mean": 0.0007380602939974779,
+    "diverged": false,
+    "prox": 1000,
+    "B": 2000,
+    "C": 1000,
+    "network": 0,
+    "backtracks": 0
+  }
+}

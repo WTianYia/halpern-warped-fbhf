@@ -1,0 +1,27 @@
+[
+  {
+    "data": "real",
+    "blur": "train",
+    "noise": "train",
+    "device": "cuda",
+    "L": 2.8163294792175293,
+    "chi": 0.32494924113127116,
+    "ref_steps": 100000,
+    "old_ref_iters": 4000,
+    "ref_time_s": 78.50088817626238,
+    "ref_self_gap_mean": 1.5939671129672206e-06,
+    "ref_self_gap_median": 1.0539378081375617e-06,
+    "ref_self_gap_max": 1.9328066628077067e-05,
+    "old_fbhf4000_gap_mean": 0.00021197421301621944,
+    "old_fbhf4000_gap_median": 5.0435228331480175e-05,
+    "old_fbhf4000_gap_max": 0.0025296066887676716,
+    "last_pdhg_rel_step_mean": 7.121087719497154e-08,
+    "last_pdhg_rel_step_max": 2.1318672338566103e-07,
+    "learned_wins_vs_fixed": 58,
+    "learned_vs_fixed_sign_p": 9.029018960445001e-12,
+    "cv_wins_vs_learned": 55,
+    "cv_vs_learned_sign_p": 3.542223380175076e-09,
+    "fixed_minus_learned_absdiff_mean": 0.00010467047997053669,
+    "fixed_minus_learned_absdiff_median": 7.928630293463357e-05
+  }
+]

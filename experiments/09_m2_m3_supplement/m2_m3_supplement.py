@@ -207,8 +207,9 @@ def evaluate_source_split(args, L, cfg, net):
     x0 = b.clone()
     y0 = torch.zeros_like(b).repeat(1, 2, 1, 1)
     chi = 4 / (1 + math.sqrt(1 + 16 * L**2))
-    xstar = core.unroll_final(prob, x0, y0, args.ref_iters, L=L, cfg=cfg, fixed=(chi - 0.05 * chi, 0.10))
-    xstar_pdhg = pdhg_final(prob, x0, y0, args.pdhg_ref_iters, L=L, tau=args.pdhg_tau)
+    xstar_fbhf = core.unroll_final(prob, x0, y0, args.ref_iters, L=L, cfg=cfg, fixed=(chi - 0.05 * chi, 0.10))
+    xstar_pdhg_half = pdhg_final(prob, x0, y0, max(1, args.pdhg_ref_iters // 2), L=L, tau=args.pdhg_tau)
+    xstar = pdhg_final(prob, x0, y0, args.pdhg_ref_iters, L=L, tau=args.pdhg_tau)
     nx = torch.sqrt((xstar**2).sum(dim=(1, 2, 3))).clamp_min(1e-12)
 
     summary = []
@@ -256,8 +257,20 @@ def evaluate_source_split(args, L, cfg, net):
         for i, val in enumerate(endpoint):
             per_image.append({"data": "source-test", "method": method, "image_index": i, "oracle_K": oracle_series[-1], "rel_primal_error_K": float(val)})
 
-    ref_gap = core.rel_error_vec(xstar, xstar_pdhg, torch.sqrt((xstar_pdhg**2).sum(dim=(1, 2, 3))).clamp_min(1e-12)).detach().cpu().numpy()
-    return summary, curves, per_image, [{"mean_ref_gap": float(ref_gap.mean()), "max_ref_gap": float(ref_gap.max())}], prob, x0, y0, xstar, nx
+    old_ref_gap = core.rel_error_vec(xstar_fbhf, xstar, nx).detach().cpu().numpy()
+    pdhg_self_gap = core.rel_error_vec(xstar_pdhg_half, xstar, nx).detach().cpu().numpy()
+    return summary, curves, per_image, [
+        {
+            "mean_ref_gap": float(pdhg_self_gap.mean()),
+            "median_ref_gap": float(np.median(pdhg_self_gap)),
+            "max_ref_gap": float(pdhg_self_gap.max()),
+            "old_fbhf_ref_gap_mean": float(old_ref_gap.mean()),
+            "old_fbhf_ref_gap_max": float(old_ref_gap.max()),
+            "reference": "PDHG",
+            "pdhg_ref_iters": int(args.pdhg_ref_iters),
+            "fbhf_ref_iters_for_gap_only": int(args.ref_iters),
+        }
+    ], prob, x0, y0, xstar, nx
 
 
 @torch.no_grad()
