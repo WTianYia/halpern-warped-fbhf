@@ -236,7 +236,7 @@ def bv_limit(new, old, radius):
     return old + diff
 
 
-def fbhf_step(prob, x, y, tau, s):
+def fbhf_step(prob, x, y, tau, s, return_test=False):
     gx, gy = prob.G(x, y)
     px = x - tau * gx
     py = weighted_project_simplex(y - s * gy, s)
@@ -244,7 +244,73 @@ def fbhf_step(prob, x, y, tau, s):
     bpx, bpy = prob.B(px, py)
     tx = px + tau * (bx - bpx)
     ty = py + s * (by - bpy)
-    return tx, weighted_project_simplex(ty, s), px, py
+    ty = weighted_project_simplex(ty, s)
+    if not return_test:
+        return tx, ty, px, py
+    dx = x - px
+    dy = y - py
+    zp_m = ((dx * dx) / tau).sum(dim=1) + ((dy * dy) / s).sum(dim=1)
+    dbx = bx - bpx
+    dby = by - bpy
+    b_m_inv = (tau * dbx * dbx).sum(dim=1) + (s * dby * dby).sum(dim=1)
+    ell2 = b_m_inv / zp_m.clamp_min(1e-30)
+    if math.isinf(prob.beta()):
+        compat_cap = torch.ones_like(ell2)
+    else:
+        kappa = torch.maximum(tau.max(dim=1).values, s.max(dim=1).values)
+        compat_cap = 1.0 - kappa / (2.0 * prob.beta())
+    test = {"ell2": ell2, "compat_cap": compat_cap, "zp_m": zp_m}
+    return tx, ty, px, py, test
+
+
+def tested_fbhf_step(prob, x, y, tau, s, chi, cfg):
+    shrink = cfg.get("test_shrink", 0.7)
+    max_backtracks = int(cfg.get("test_max_backtracks", 12))
+    safety = cfg.get("test_safety", 0.98)
+    fallback_tau = cfg.get("test_fallback_mult", 0.9) * chi
+    fallback_s = cfg.get("test_fallback_mult", 0.9) * chi
+    backtracks = torch.zeros(x.shape[0], device=x.device, dtype=torch.long)
+    tau_try = tau
+    s_try = s
+    accepted = None
+    for _ in range(max_backtracks + 1):
+        tx, ty, px, py, test = fbhf_step(prob, x, y, tau_try, s_try, return_test=True)
+        threshold = safety * test["compat_cap"]
+        passed = (test["zp_m"] <= 1e-24) | ((threshold > 0.0) & (test["ell2"] <= threshold))
+        accepted = (tx, ty, px, py, test, passed)
+        if bool(passed.all().item()):
+            break
+        fail = (~passed).view(-1, 1)
+        tau_try = torch.where(fail, tau_try * shrink, tau_try)
+        s_try = torch.where(fail, s_try * shrink, s_try)
+        backtracks = backtracks + (~passed).to(torch.long)
+    tx, ty, px, py, test, passed = accepted
+    if not bool(passed.all().item()):
+        fail = (~passed).view(-1, 1)
+        tau_try = torch.where(fail, torch.full_like(tau_try, fallback_tau), tau_try)
+        s_try = torch.where(fail, torch.full_like(s_try, fallback_s), s_try)
+        tx, ty, px, py, test = fbhf_step(prob, x, y, tau_try, s_try, return_test=True)
+        passed = torch.ones_like(test["ell2"], dtype=torch.bool)
+    stats = {
+        "backtracks": backtracks,
+        "ell2": test["ell2"].detach(),
+        "compat_cap": test["compat_cap"].detach(),
+        "tau": tau_try.detach(),
+        "s": s_try.detach(),
+    }
+    return tx, ty, px, py, stats
+
+
+def update_runtime_stats(target, stats):
+    if target is None or stats is None:
+        return
+    target["steps"] += int(stats["backtracks"].numel())
+    target["backtracks"] += int(stats["backtracks"].sum().item())
+    target["max_backtracks"] = max(target["max_backtracks"], int(stats["backtracks"].max().item()))
+    target["max_ell2"] = max(target["max_ell2"], float(stats["ell2"].max().item()))
+    target["min_margin"] = min(target["min_margin"], float((stats["compat_cap"] - stats["ell2"]).min().item()))
+    target["max_tau_over_chi"] = max(target["max_tau_over_chi"], float((stats["tau"] / target["chi"]).max().item()))
+    target["max_s_over_chi"] = max(target["max_s_over_chi"], float((stats["s"] / target["chi"]).max().item()))
 
 
 def fbf_step(prob, x, y, gamma):
@@ -272,7 +338,7 @@ def frb_step(prob, x, y, gx_prev, gy_prev, gamma):
     return tx, ty, gx, gy
 
 
-def run_trace(prob, method, steps, net=None, fixed=None, cfg=None, checkpoints=None, anchor=False):
+def run_trace(prob, method, steps, net=None, fixed=None, cfg=None, checkpoints=None, anchor=False, runtime_stats=None):
     if checkpoints is None:
         checkpoints = []
     checkpoints = set(int(c) for c in checkpoints)
@@ -310,7 +376,11 @@ def run_trace(prob, method, steps, net=None, fixed=None, cfg=None, checkpoints=N
                         s = bv_limit(s, s_prev, radius)
                     tau_prev = tau.detach()
                     s_prev = s.detach()
-            tx, ty, px, py = fbhf_step(prob, x, y, tau, s)
+            if cfg is not None and cfg.get("runtime_test", False):
+                tx, ty, px, py, step_stats = tested_fbhf_step(prob, x, y, tau, s, chi, cfg)
+                update_runtime_stats(runtime_stats, step_stats)
+            else:
+                tx, ty, px, py = fbhf_step(prob, x, y, tau, s)
             if anchor:
                 lam = 1.0 / (k + 2.0)
                 tx = (1 - lam) * tx
@@ -352,6 +422,11 @@ def train_metric(args, outdir):
         anchor_tau_mult=args.learn_anchor_tau_mult,
         anchor_s_mult=args.learn_anchor_s_mult,
         anchor_delta_mult=args.learn_anchor_delta_mult,
+        runtime_test=args.runtime_test,
+        test_safety=args.test_safety,
+        test_shrink=args.test_shrink,
+        test_max_backtracks=args.test_max_backtracks,
+        test_fallback_mult=args.test_fallback_mult,
     )
     best = float("inf")
     rows = []
@@ -447,6 +522,11 @@ def evaluate_main(args, outdir, ckpt=None):
         anchor_tau_mult=args.learn_anchor_tau_mult,
         anchor_s_mult=args.learn_anchor_s_mult,
         anchor_delta_mult=args.learn_anchor_delta_mult,
+        runtime_test=args.runtime_test,
+        test_safety=args.test_safety,
+        test_shrink=args.test_shrink,
+        test_max_backtracks=args.test_max_backtracks,
+        test_fallback_mult=args.test_fallback_mult,
     )
     net = None
     if ckpt is not None and Path(ckpt).exists():
@@ -472,10 +552,28 @@ def evaluate_main(args, outdir, ckpt=None):
     per_rows = []
     summary = []
     traces = {}
+    runtime_stats_by_method = {}
     for label, method, fixed in methods:
+        runtime_stats = None
+        if cfg.get("runtime_test", False) and method in {"plain", "fixed", "learned"}:
+            runtime_stats = {
+                "chi": float(chi),
+                "steps": 0,
+                "backtracks": 0,
+                "max_backtracks": 0,
+                "max_ell2": 0.0,
+                "min_margin": float("inf"),
+                "max_tau_over_chi": 0.0,
+                "max_s_over_chi": 0.0,
+            }
         t0 = time.perf_counter()
-        x, y, trace = run_trace(prob, method, args.eval_steps, net=net, fixed=fixed, cfg=cfg, checkpoints=checkpoints)
+        x, y, trace = run_trace(prob, method, args.eval_steps, net=net, fixed=fixed, cfg=cfg, checkpoints=checkpoints, runtime_stats=runtime_stats)
         wall = time.perf_counter() - t0
+        if runtime_stats is not None:
+            runtime_stats_by_method[label] = runtime_stats
+        charged_calls = float(dominant_calls(method, args.eval_steps))
+        if runtime_stats is not None:
+            charged_calls += 2.0 * runtime_stats["backtracks"] / max(args.ntest, 1)
         err = rel_error(x, y, ref_x, ref_y).detach().cpu().numpy()
         merit = prob.merit(x, y).detach().cpu().numpy()
         for i in range(args.ntest):
@@ -491,7 +589,7 @@ def evaluate_main(args, outdir, ckpt=None):
                 "median_rel_error": float(np.median(err)),
                 "mean_merit": float(merit.mean()),
                 "wall_time": float(wall),
-                "dominant_B_calls": dominant_calls(method, args.eval_steps),
+                "dominant_B_calls": charged_calls,
             }
         )
         traces[label] = err
@@ -523,6 +621,8 @@ def evaluate_main(args, outdir, ckpt=None):
         "learned_vs_fixed_losses": losses,
         "learned_vs_fixed_ties": ties,
         "learned_vs_fixed_sign_p": pval,
+        "runtime_test_enabled": bool(cfg.get("runtime_test", False)),
+        "runtime_test_stats": runtime_stats_by_method,
     }
     write_csv(outdir / "main_summary.csv", summary)
     write_csv(outdir / "main_per_instance.csv", per_rows)
@@ -695,6 +795,11 @@ def main():
     ap.add_argument("--learn_anchor_tau_mult", type=float, default=0.0)
     ap.add_argument("--learn_anchor_s_mult", type=float, default=0.0)
     ap.add_argument("--learn_anchor_delta_mult", type=float, default=0.15)
+    ap.add_argument("--runtime_test", action="store_true")
+    ap.add_argument("--test_safety", type=float, default=0.98)
+    ap.add_argument("--test_shrink", type=float, default=0.7)
+    ap.add_argument("--test_max_backtracks", type=int, default=12)
+    ap.add_argument("--test_fallback_mult", type=float, default=0.9)
     ap.add_argument("--fixed_tau_mult", nargs="+", type=float, default=[0.5, 0.9, 1.3, 1.7, 2.1, 2.5])
     ap.add_argument("--fixed_s_mult", nargs="+", type=float, default=[0.5, 0.9, 1.3, 1.7, 2.1, 2.5])
     ap.add_argument("--scan_rho", nargs="+", type=float, default=[0.05, 0.1, 0.2, 0.5, 1.0])

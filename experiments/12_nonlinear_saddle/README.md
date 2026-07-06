@@ -45,6 +45,21 @@ Euclidean simplex projection. The optional `--learn_anchor_tau_mult` and
 fixed metric, which separates learning value from sigmoid saturation near a
 step-size box boundary.
 
+Runtime-tested certification is available with `--runtime_test`. In this mode,
+each proposed warped step is accepted only when the local metric-adapted test
+passes on the realised pair `(z_k, p_k)`. Failed proposals are shrunk and
+recomputed, and the extra `B` evaluations are added to the endpoint
+`dominant_B_calls` field. A typical tested fixed-grid diagnostic is:
+
+```bash
+python nonlinear_saddle_experiment.py \
+  --outdir nonlinear_tested_fixed_ext20 --skip_train --skip_scan --skip_selection \
+  --runtime_test --eval_steps 200 --ref_steps 20000 \
+  --tlo 0.25 --thi 20.0 --slo 0.25 --shi 20.0 \
+  --fixed_tau_mult 3.5 5.0 7.0 10.0 14.0 20.0 \
+  --fixed_s_mult 3.5 5.0 7.0 10.0 14.0 20.0
+```
+
 Outputs include CSV/JSON metadata and publication-style PDF/PNG/SVG figures:
 
 - `main/main_summary.csv`
