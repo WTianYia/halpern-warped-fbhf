@@ -20,6 +20,11 @@ experiments/
   05_reconstruction_plate/         # image restoration visual comparison
   06_warped_training_runs/         # warped-metric training logs, metrics, checkpoints
   07_supporting_probes/            # negative probes used to rule out weaker learning routes
+  08_revision_experiments/         # reviewer-requested operator-cap diagnostics
+  09_m2_m3_supplement/             # added baseline and data-protocol experiments
+  10_certified_mode_supplement/    # fully certified operating-box supplement
+  11_high_precision_reference/     # high-precision reference audits
+  12_nonlinear_saddle/             # nonlinear-B saddle benchmark scaffold
 ```
 
 Each experiment folder includes the relevant source code, raw CSV/JSON data, generated figures, and metadata needed to reproduce or audit the reported results.
@@ -31,6 +36,7 @@ Each experiment folder includes the relevant source code, raw CSV/JSON data, gen
 - `experiments/02_main_oracle_real_synthetic/make_oracle_std_figures.py`
 - `experiments/01_nonunique_selection/run_nonunique_selection.py`
 - `experiments/06_warped_training_runs/warped_main/trackB_warped_train.py`
+- `experiments/12_nonlinear_saddle/nonlinear_saddle_experiment.py`
 
 ## Notes
 

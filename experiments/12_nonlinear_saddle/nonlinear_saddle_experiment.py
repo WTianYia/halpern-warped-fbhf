@@ -311,7 +311,12 @@ def train_metric(args, outdir):
             rank_def=0,
         )
         x, y, _ = run_trace(prob, "learned", args.train_K, net=net, cfg=cfg)
-        loss = prob.merit(x, y).mean()
+        if args.train_loss == "reference":
+            with torch.no_grad():
+                xr, yr, _ = run_trace(prob, "fbf", args.train_ref_steps)
+            loss = rel_error(x, y, xr, yr).mean()
+        else:
+            loss = prob.merit(x, y).mean()
         opt.zero_grad()
         loss.backward()
         torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
@@ -320,11 +325,21 @@ def train_metric(args, outdir):
             with torch.no_grad():
                 val_prob, _ = HuberSaddle.make(args.batch, args.n, args.m, args.val_seed + it, args.delta, args.lam, args.rho)
                 xv, yv, _ = run_trace(val_prob, "learned", args.train_K, net=net, cfg=cfg)
-                val = val_prob.merit(xv, yv).mean().item()
-                row = {"iter": it, "train_merit": float(loss.item()), "val_merit": val}
+                val_merit = val_prob.merit(xv, yv).mean().item()
+                if args.train_loss == "reference":
+                    xrv, yrv, _ = run_trace(val_prob, "fbf", args.train_ref_steps)
+                    val_score = rel_error(xv, yv, xrv, yrv).mean().item()
+                else:
+                    val_score = val_merit
+                row = {
+                    "iter": it,
+                    "train_score": float(loss.item()),
+                    "val_score": val_score,
+                    "val_merit": val_merit,
+                }
                 rows.append(row)
-                if math.isfinite(val) and val < best:
-                    best = val
+                if math.isfinite(val_score) and val_score < best:
+                    best = val_score
                     torch.save(net.state_dict(), outdir / "nonlinear_saddle_metric.pt")
                     row["saved"] = 1
                 else:
@@ -334,20 +349,21 @@ def train_metric(args, outdir):
     return outdir / "nonlinear_saddle_metric.pt"
 
 
-def tune_fixed(prob, ref_x, ref_y, candidates, eval_steps):
+@torch.no_grad()
+def tune_fixed(prob, candidates, eval_steps):
     best = None
     rows = []
     for tau, s in candidates:
         x, y, _ = run_trace(prob, "fixed", eval_steps, fixed=(tau, s))
-        err = rel_error(x, y, ref_x, ref_y).mean().item()
         merit = prob.merit(x, y).mean().item()
-        row = {"tau": tau, "s": s, "mean_error": err, "mean_merit": merit}
+        row = {"tau": tau, "s": s, "validation_mean_merit": merit}
         rows.append(row)
-        if math.isfinite(err) and (best is None or err < best[0]):
-            best = (err, tau, s)
+        if math.isfinite(merit) and (best is None or merit < best[0]):
+            best = (merit, tau, s)
     return best, rows
 
 
+@torch.no_grad()
 def evaluate_main(args, outdir, ckpt=None):
     outdir.mkdir(parents=True, exist_ok=True)
     prob, _ = HuberSaddle.make(args.ntest, args.n, args.m, args.eval_seed, args.delta, args.lam, args.rho)
@@ -356,12 +372,13 @@ def evaluate_main(args, outdir, ckpt=None):
     for mt in args.fixed_tau_mult:
         for ms in args.fixed_s_mult:
             fixed_grid.append((float(mt * chi), float(ms * chi)))
+    val_prob, _ = HuberSaddle.make(args.ntest, args.n, args.m, args.val_seed + int(1000 * args.rho), args.delta, args.lam, args.rho)
+    best, fixed_rows = tune_fixed(val_prob, fixed_grid, args.eval_steps)
+    fixed_tau, fixed_s = best[1], best[2]
+    write_csv(outdir / "fixed_grid.csv", fixed_rows)
     ref_x, ref_y, saved = run_trace(prob, "fbf", args.ref_steps, checkpoints=[args.ref_steps // 2, args.ref_steps])
     half_x, half_y = saved[args.ref_steps // 2]
     ref_gap = rel_error(half_x, half_y, ref_x, ref_y)
-    best, fixed_rows = tune_fixed(prob, ref_x, ref_y, fixed_grid, args.eval_steps)
-    fixed_tau, fixed_s = best[1], best[2]
-    write_csv(outdir / "fixed_grid.csv", fixed_rows)
     cfg = dict(tlo=args.tlo * chi, thi=args.thi * chi, slo=args.slo * chi, shi=args.shi * chi, c=args.bv_c, p=1.1, bv=True)
     net = None
     if ckpt is not None and Path(ckpt).exists():
@@ -443,6 +460,7 @@ def dominant_calls(method, k):
     return k
 
 
+@torch.no_grad()
 def beta_scan(args, outdir, ckpt=None):
     rows = []
     ckpt_path = Path(ckpt) if ckpt else None
@@ -467,6 +485,7 @@ def beta_scan(args, outdir, ckpt=None):
     make_beta_plot(outdir, rows)
 
 
+@torch.no_grad()
 def evaluate_selection(args, outdir):
     outdir.mkdir(parents=True, exist_ok=True)
     rank_def = max(1, args.rank_def)
@@ -581,6 +600,8 @@ def main():
     ap.add_argument("--eval_steps", type=int, default=1000)
     ap.add_argument("--ref_steps", type=int, default=100000)
     ap.add_argument("--train_iters", type=int, default=3000)
+    ap.add_argument("--train_loss", choices=["merit", "reference"], default="merit")
+    ap.add_argument("--train_ref_steps", type=int, default=200)
     ap.add_argument("--eval_every", type=int, default=100)
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--tlo", type=float, default=0.25)
