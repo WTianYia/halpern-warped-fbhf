@@ -13,4 +13,5 @@ experiments/12_nonlinear_saddle/smoke_local_ref/
 experiments/12_nonlinear_saddle/smoke_local_ref2/
 experiments/12_nonlinear_saddle/smoke_local_ycoord/
 experiments/12_nonlinear_saddle/nonlinear_*pilot*/
+experiments/12_nonlinear_saddle/nonlinear_*clean*/
 experiments/12_nonlinear_saddle/nonlinear_run*/

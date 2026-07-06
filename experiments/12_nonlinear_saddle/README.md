@@ -38,7 +38,12 @@ The learned warped-metric pilot uses coordinatewise primal steps and
 samplewise dual steps. The dual-step network receives per-sample Huber values,
 dual variables, gradients, and one-step history features, so the benchmark can
 test whether outlier-level structure gives learning a fair advantage over the
-best fixed warped metric.
+best fixed warped metric. When samplewise dual steps are used, the simplex
+resolvent is the corresponding diagonal-metric weighted projection, not the
+Euclidean simplex projection. The optional `--learn_anchor_tau_mult` and
+`--learn_anchor_s_mult` flags initialise the learned metric around a tuned
+fixed metric, which separates learning value from sigmoid saturation near a
+step-size box boundary.
 
 Outputs include CSV/JSON metadata and publication-style PDF/PNG/SVG figures:
 

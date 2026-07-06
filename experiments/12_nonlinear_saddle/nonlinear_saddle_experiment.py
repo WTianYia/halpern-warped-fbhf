@@ -48,6 +48,22 @@ def project_simplex(v):
     return torch.clamp(v - theta, min=0.0)
 
 
+def weighted_project_simplex(v, weights):
+    """Projection onto the simplex in the diagonal metric diag(1 / weights)."""
+    weights = weights.expand_as(v).clamp_min(1e-12)
+    ratio = v / weights
+    ratio_sorted, order = torch.sort(ratio, dim=1, descending=True)
+    v_sorted = v.gather(1, order)
+    w_sorted = weights.gather(1, order)
+    prefix_v = torch.cumsum(v_sorted, dim=1)
+    prefix_w = torch.cumsum(w_sorted, dim=1).clamp_min(1e-12)
+    theta_all = (prefix_v - 1.0) / prefix_w
+    active = ratio_sorted > theta_all
+    rho = active.sum(dim=1).clamp_min(1)
+    theta = theta_all.gather(1, (rho - 1).view(-1, 1))
+    return torch.clamp(v - theta * weights, min=0.0)
+
+
 def huber(r, delta):
     a = torch.abs(r)
     return torch.where(a <= delta, 0.5 * r * r, delta * (a - 0.5 * delta))
@@ -149,6 +165,10 @@ class MetricNet(nn.Module):
         super().__init__()
         self.x_net = nn.Sequential(nn.Linear(5, hidden), nn.Tanh(), nn.Linear(hidden, hidden), nn.Tanh(), nn.Linear(hidden, 1))
         self.s_net = nn.Sequential(nn.Linear(8, hidden), nn.Tanh(), nn.Linear(hidden, hidden), nn.Tanh(), nn.Linear(hidden, 1))
+        nn.init.zeros_(self.x_net[-1].weight)
+        nn.init.zeros_(self.x_net[-1].bias)
+        nn.init.zeros_(self.s_net[-1].weight)
+        nn.init.zeros_(self.s_net[-1].bias)
 
     def forward(self, prob, x, y, x_prev, y_prev, gx, gy):
         x_feat = torch.stack(
@@ -187,9 +207,27 @@ class MetricNet(nn.Module):
         return raw_tau, raw_s
 
 
-def clamp_metric(raw_tau, raw_s, lo, hi, s_lo, s_hi):
-    tau = lo + (hi - lo) * torch.sigmoid(raw_tau)
-    s = s_lo + (s_hi - s_lo) * torch.sigmoid(raw_s)
+def metric_bounds(cfg, chi):
+    scale = float(chi) if cfg.get("scale_by_chi", True) else 1.0
+    return cfg["tlo"] * scale, cfg["thi"] * scale, cfg["slo"] * scale, cfg["shi"] * scale
+
+
+def clamp_metric(raw_tau, raw_s, cfg, chi):
+    lo, hi, s_lo, s_hi = metric_bounds(cfg, chi)
+    anchor_tau_mult = cfg.get("anchor_tau_mult", 0.0)
+    anchor_s_mult = cfg.get("anchor_s_mult", 0.0)
+    if anchor_tau_mult > 0.0:
+        anchor_tau = anchor_tau_mult * chi
+        delta_tau = cfg.get("anchor_delta_mult", 0.15) * chi
+        tau = torch.clamp(anchor_tau + delta_tau * torch.tanh(raw_tau), min=lo, max=hi)
+    else:
+        tau = lo + (hi - lo) * torch.sigmoid(raw_tau)
+    if anchor_s_mult > 0.0:
+        anchor_s = anchor_s_mult * chi
+        delta_s = cfg.get("anchor_delta_mult", 0.15) * chi
+        s = torch.clamp(anchor_s + delta_s * torch.tanh(raw_s), min=s_lo, max=s_hi)
+    else:
+        s = s_lo + (s_hi - s_lo) * torch.sigmoid(raw_s)
     return tau, s
 
 
@@ -201,12 +239,12 @@ def bv_limit(new, old, radius):
 def fbhf_step(prob, x, y, tau, s):
     gx, gy = prob.G(x, y)
     px = x - tau * gx
-    py = project_simplex(y - s * gy)
+    py = weighted_project_simplex(y - s * gy, s)
     bx, by = prob.B(x, y)
     bpx, bpy = prob.B(px, py)
     tx = px + tau * (bx - bpx)
     ty = py + s * (by - bpy)
-    return tx, project_simplex(ty), px, py
+    return tx, weighted_project_simplex(ty, s), px, py
 
 
 def fbf_step(prob, x, y, gamma):
@@ -264,7 +302,7 @@ def run_trace(prob, method, steps, net=None, fixed=None, cfg=None, checkpoints=N
             else:
                 gx, gy = prob.G(x, y)
                 raw_tau, raw_s = net(prob, x, y, x_prev, y_prev, gx, gy)
-                tau, s = clamp_metric(raw_tau, raw_s, cfg["tlo"], cfg["thi"], cfg["slo"], cfg["shi"])
+                tau, s = clamp_metric(raw_tau, raw_s, cfg, chi)
                 if cfg.get("bv", True):
                     radius = cfg["c"] / ((k + 1.0) ** cfg.get("p", 1.1))
                     if tau_prev is not None:
@@ -302,7 +340,19 @@ def train_metric(args, outdir):
     outdir.mkdir(parents=True, exist_ok=True)
     net = MetricNet().to(DEV)
     opt = torch.optim.Adam(net.parameters(), lr=args.lr)
-    cfg = dict(tlo=args.tlo, thi=args.thi, slo=args.slo, shi=args.shi, c=args.bv_c, p=1.1, bv=True)
+    cfg = dict(
+        tlo=args.tlo,
+        thi=args.thi,
+        slo=args.slo,
+        shi=args.shi,
+        c=args.bv_c,
+        p=1.1,
+        bv=True,
+        scale_by_chi=True,
+        anchor_tau_mult=args.learn_anchor_tau_mult,
+        anchor_s_mult=args.learn_anchor_s_mult,
+        anchor_delta_mult=args.learn_anchor_delta_mult,
+    )
     best = float("inf")
     rows = []
     for it in range(1, args.train_iters + 1):
@@ -385,12 +435,29 @@ def evaluate_main(args, outdir, ckpt=None):
     ref_x, ref_y, saved = run_trace(prob, "fbf", args.ref_steps, checkpoints=[args.ref_steps // 2, args.ref_steps])
     half_x, half_y = saved[args.ref_steps // 2]
     ref_gap = rel_error(half_x, half_y, ref_x, ref_y)
-    cfg = dict(tlo=args.tlo * chi, thi=args.thi * chi, slo=args.slo * chi, shi=args.shi * chi, c=args.bv_c, p=1.1, bv=True)
+    cfg = dict(
+        tlo=args.tlo,
+        thi=args.thi,
+        slo=args.slo,
+        shi=args.shi,
+        c=args.bv_c,
+        p=1.1,
+        bv=True,
+        scale_by_chi=True,
+        anchor_tau_mult=args.learn_anchor_tau_mult,
+        anchor_s_mult=args.learn_anchor_s_mult,
+        anchor_delta_mult=args.learn_anchor_delta_mult,
+    )
     net = None
     if ckpt is not None and Path(ckpt).exists():
         net = MetricNet().to(DEV)
         net.load_state_dict(torch.load(ckpt, map_location=DEV))
         net.eval()
+        x0 = torch.zeros(prob.batch, prob.n, device=prob.mat.device)
+        y0 = prob.u.clone()
+        gx0, gy0 = prob.G(x0, y0)
+        raw_tau0, raw_s0 = net(prob, x0, y0, x0, y0, gx0, gy0)
+        tau0, s0 = clamp_metric(raw_tau0, raw_s0, cfg, chi)
     methods = [
         ("plain-FBHF", "plain", None),
         ("fixed-warped-FBHF", "fixed", (fixed_tau, fixed_s)),
@@ -429,10 +496,14 @@ def evaluate_main(args, outdir, ckpt=None):
         )
         traces[label] = err
     if "learned-warped-FBHF" in traces:
-        wins = int((traces["learned-warped-FBHF"] < traces["fixed-warped-FBHF"]).sum())
-        pval = sign_test_p_value(wins, args.ntest)
+        diff = traces["learned-warped-FBHF"] - traces["fixed-warped-FBHF"]
+        tol = 1e-12
+        wins = int((diff < -tol).sum())
+        losses = int((diff > tol).sum())
+        ties = int(args.ntest - wins - losses)
+        pval = 1.0 if wins + losses == 0 else sign_test_p_value(wins, wins + losses)
     else:
-        wins, pval = None, None
+        wins, losses, ties, pval = None, None, None, None
     diag = {
         "reference": "Tseng-FBF",
         "ref_steps": args.ref_steps,
@@ -444,7 +515,13 @@ def evaluate_main(args, outdir, ckpt=None):
         "LG_bound_max": float(prob.LG_bound().max().item()),
         "fixed_tau": float(fixed_tau),
         "fixed_s": float(fixed_s),
+        "learned_tau_over_chi_mean_initial": None if net is None else float((tau0 / chi).mean().item()),
+        "learned_tau_over_chi_max_initial": None if net is None else float((tau0 / chi).max().item()),
+        "learned_s_over_chi_mean_initial": None if net is None else float((s0 / chi).mean().item()),
+        "learned_s_over_chi_max_initial": None if net is None else float((s0 / chi).max().item()),
         "learned_vs_fixed_wins": wins,
+        "learned_vs_fixed_losses": losses,
+        "learned_vs_fixed_ties": ties,
         "learned_vs_fixed_sign_p": pval,
     }
     write_csv(outdir / "main_summary.csv", summary)
@@ -611,12 +688,15 @@ def main():
     ap.add_argument("--eval_every", type=int, default=100)
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--tlo", type=float, default=0.25)
-    ap.add_argument("--thi", type=float, default=2.0)
+    ap.add_argument("--thi", type=float, default=2.5)
     ap.add_argument("--slo", type=float, default=0.25)
-    ap.add_argument("--shi", type=float, default=2.0)
+    ap.add_argument("--shi", type=float, default=2.5)
     ap.add_argument("--bv_c", type=float, default=0.5)
-    ap.add_argument("--fixed_tau_mult", nargs="+", type=float, default=[0.5, 0.9, 1.3, 1.7])
-    ap.add_argument("--fixed_s_mult", nargs="+", type=float, default=[0.5, 0.9, 1.3, 1.7])
+    ap.add_argument("--learn_anchor_tau_mult", type=float, default=0.0)
+    ap.add_argument("--learn_anchor_s_mult", type=float, default=0.0)
+    ap.add_argument("--learn_anchor_delta_mult", type=float, default=0.15)
+    ap.add_argument("--fixed_tau_mult", nargs="+", type=float, default=[0.5, 0.9, 1.3, 1.7, 2.1, 2.5])
+    ap.add_argument("--fixed_s_mult", nargs="+", type=float, default=[0.5, 0.9, 1.3, 1.7, 2.1, 2.5])
     ap.add_argument("--scan_rho", nargs="+", type=float, default=[0.05, 0.1, 0.2, 0.5, 1.0])
     ap.add_argument("--skip_train", action="store_true")
     ap.add_argument("--skip_scan", action="store_true")
