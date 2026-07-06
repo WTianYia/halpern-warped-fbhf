@@ -12,7 +12,9 @@ import torch
 
 ROOT = Path(__file__).resolve().parents[2]
 MAIN_EXP = ROOT / "experiments" / "02_main_oracle_real_synthetic"
+REV_EXP = ROOT / "experiments" / "08_revision_experiments"
 sys.path.insert(0, str(MAIN_EXP))
+sys.path.insert(0, str(REV_EXP))
 
 from trackB_formal_eval import (  # noqa: E402
     DEV,
@@ -28,6 +30,7 @@ from trackB_formal_eval import (  # noqa: E402
     unroll_final,
     warped_step,
 )
+from reviewer_experiments import pdhg_final  # noqa: E402
 
 
 def certified_cfg(args):
@@ -41,6 +44,12 @@ def certified_cfg(args):
         "s0": args.s0,
         "c": args.c,
     }
+
+
+def sign_test_p_value(wins, n):
+    k = min(wins, n - wins)
+    prob = sum(math.comb(n, i) for i in range(k + 1)) / (2**n)
+    return float(min(1.0, 2.0 * prob))
 
 
 def objective_after(prob, xs):
@@ -153,7 +162,9 @@ def evaluate(args, L, cfg):
     x0 = b.clone()
     y0 = torch.zeros_like(b).repeat(1, 2, 1, 1)
     chi = 4 / (1 + math.sqrt(1 + 16 * L**2))
-    xstar = unroll_final(prob, x0, y0, args.ref_iters, L=L, cfg=cfg, fixed=(chi - 0.05 * chi, 0.10))
+    old_xstar = unroll_final(prob, x0, y0, args.ref_iters, L=L, cfg=cfg, fixed=(chi - 0.05 * chi, 0.10))
+    xstar_half = pdhg_final(prob, x0, y0, max(1, args.pdhg_ref_iters // 2), L=L, tau=args.pdhg_tau)
+    xstar = pdhg_final(prob, x0, y0, args.pdhg_ref_iters, L=L, tau=args.pdhg_tau)
     nx = torch.sqrt((xstar**2).sum(dim=(1, 2, 3))).clamp_min(1e-12)
 
     net = PrecNet().to(DEV)
@@ -202,7 +213,30 @@ def evaluate(args, L, cfg):
                 **diag,
             }
         )
-    return curves, per_image, summary
+    by_method = {}
+    for row in per_image:
+        by_method.setdefault(row["method"], {})[row["image_index"]] = row["rel_primal_error_K"]
+    wins = sum(
+        by_method["certified-learned"][j] < by_method["certified-fixed"][j]
+        for j in by_method["certified-learned"]
+    )
+    pdhg_self_gap = rel_error_vec(xstar_half, xstar, nx).detach().cpu().numpy()
+    old_ref_gap = rel_error_vec(old_xstar, xstar, nx).detach().cpu().numpy()
+    diagnostics = {
+        "reference": "Condat-Vu/PDHG",
+        "pdhg_ref_iters": int(args.pdhg_ref_iters),
+        "pdhg_ref_half_iters": int(max(1, args.pdhg_ref_iters // 2)),
+        "old_fbhf_ref_iters_for_gap_only": int(args.ref_iters),
+        "ref_self_gap_mean": float(pdhg_self_gap.mean()),
+        "ref_self_gap_median": float(np.median(pdhg_self_gap)),
+        "ref_self_gap_max": float(pdhg_self_gap.max()),
+        "old_fbhf_ref_gap_mean": float(old_ref_gap.mean()),
+        "old_fbhf_ref_gap_median": float(np.median(old_ref_gap)),
+        "old_fbhf_ref_gap_max": float(old_ref_gap.max()),
+        "learned_vs_fixed_wins": int(wins),
+        "learned_vs_fixed_sign_p": sign_test_p_value(wins, args.ntest),
+    }
+    return curves, per_image, summary, diagnostics
 
 
 def write_csv(path, rows):
@@ -266,6 +300,8 @@ def main():
     ap.add_argument("--train_K", type=int, default=40)
     ap.add_argument("--eval_K", type=int, default=1000)
     ap.add_argument("--ref_iters", type=int, default=4000)
+    ap.add_argument("--pdhg_ref_iters", type=int, default=100000)
+    ap.add_argument("--pdhg_tau", type=float, default=1.0)
     ap.add_argument("--train_iters", type=int, default=1500)
     ap.add_argument("--eval_every", type=int, default=100)
     ap.add_argument("--lr", type=float, default=1e-3)
@@ -305,20 +341,23 @@ def main():
         "ntest": args.ntest,
         "eval_K": args.eval_K,
         "ref_iters": args.ref_iters,
+        "pdhg_ref_iters": args.pdhg_ref_iters,
     }
     with (outdir / "certified_protocol.json").open("w", encoding="utf-8") as f:
         json.dump(protocol, f, indent=2)
     print(json.dumps(protocol, indent=2), flush=True)
 
     train_log = train(args, L, cfg)
-    curves, per_image, summary = evaluate(args, L, cfg)
+    curves, per_image, summary, diagnostics = evaluate(args, L, cfg)
     write_csv(outdir / "train_log.csv", train_log)
     write_csv(outdir / "curves_certified.csv", curves)
     write_csv(outdir / "per_image_certified.csv", per_image)
     with (outdir / "summary_certified.json").open("w", encoding="utf-8") as f:
-        json.dump({"protocol": protocol, "summary": summary}, f, indent=2)
+        json.dump({"protocol": protocol, "summary": summary, "reference_diagnostics": diagnostics}, f, indent=2)
+    with (outdir / "reference_diagnostics_certified.json").open("w", encoding="utf-8") as f:
+        json.dump(diagnostics, f, indent=2)
     make_plot(outdir, curves, summary)
-    print(json.dumps({"summary": summary}, indent=2), flush=True)
+    print(json.dumps({"summary": summary, "reference_diagnostics": diagnostics}, indent=2), flush=True)
 
 
 if __name__ == "__main__":

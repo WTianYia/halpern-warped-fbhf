@@ -1,0 +1,14 @@
+{
+  "reference": "Condat-Vu/PDHG",
+  "pdhg_ref_iters": 100000,
+  "pdhg_ref_half_iters": 50000,
+  "old_fbhf_ref_iters_for_gap_only": 4000,
+  "ref_self_gap_mean": 2.0739410047099227e-06,
+  "ref_self_gap_median": 1.1346525070621283e-06,
+  "ref_self_gap_max": 4.0254857594845816e-05,
+  "old_fbhf_ref_gap_mean": 0.00015271286247298121,
+  "old_fbhf_ref_gap_median": 3.636248948168941e-05,
+  "old_fbhf_ref_gap_max": 0.0019193125190213323,
+  "learned_vs_fixed_wins": 54,
+  "learned_vs_fixed_sign_p": 1.9964982237862146e-08
+}

@@ -1,0 +1,17 @@
+{
+  "device": "cuda",
+  "L_D": 2.8130600452423096,
+  "beta": 1.0,
+  "tau_max": 0.6,
+  "ell_cap": 0.6,
+  "compatibility_cap": 0.7,
+  "compatibility_margin": 0.09999999999999998,
+  "certified": true,
+  "fixed_tau": 0.6,
+  "fixed_s": 0.1,
+  "fixed_ell2": 0.4747984090883199,
+  "ntest": 64,
+  "eval_K": 1000,
+  "ref_iters": 4000,
+  "pdhg_ref_iters": 100000
+}
