@@ -263,15 +263,28 @@ def fbhf_step(prob, x, y, tau, s, return_test=False):
     return tx, ty, px, py, test
 
 
-def tested_fbhf_step(prob, x, y, tau, s, chi, cfg):
+def metric_jump(tau, s, tau_prev, s_prev):
+    if tau_prev is None or s_prev is None:
+        return torch.zeros(tau.shape[0], device=tau.device, dtype=tau.dtype)
+    mtau = (1.0 / tau.clamp_min(1e-12) - 1.0 / tau_prev.clamp_min(1e-12)).abs().amax(dim=1)
+    ms = (1.0 / s.clamp_min(1e-12) - 1.0 / s_prev.clamp_min(1e-12)).abs().amax(dim=1)
+    return torch.maximum(mtau, ms)
+
+
+def limit_metric_move(tau, s, tau_prev, s_prev, radius):
+    if tau_prev is None or s_prev is None or radius is None:
+        return tau, s
+    return bv_limit(tau, tau_prev, radius), bv_limit(s, s_prev, radius)
+
+
+def tested_fbhf_step(prob, x, y, tau, s, chi, cfg, tau_prev=None, s_prev=None, bv_radius=None):
     shrink = cfg.get("test_shrink", 0.7)
     max_backtracks = int(cfg.get("test_max_backtracks", 12))
     safety = cfg.get("test_safety", 0.98)
     fallback_tau = cfg.get("test_fallback_mult", 0.9) * chi
     fallback_s = cfg.get("test_fallback_mult", 0.9) * chi
     backtracks = torch.zeros(x.shape[0], device=x.device, dtype=torch.long)
-    tau_try = tau
-    s_try = s
+    tau_try, s_try = limit_metric_move(tau, s, tau_prev, s_prev, bv_radius)
     accepted = None
     for _ in range(max_backtracks + 1):
         tx, ty, px, py, test = fbhf_step(prob, x, y, tau_try, s_try, return_test=True)
@@ -281,22 +294,28 @@ def tested_fbhf_step(prob, x, y, tau, s, chi, cfg):
         if bool(passed.all().item()):
             break
         fail = (~passed).view(-1, 1)
-        tau_try = torch.where(fail, tau_try * shrink, tau_try)
-        s_try = torch.where(fail, s_try * shrink, s_try)
+        tau_next = torch.where(fail, tau_try * shrink, tau_try)
+        s_next = torch.where(fail, s_try * shrink, s_try)
+        tau_try, s_try = limit_metric_move(tau_next, s_next, tau_prev, s_prev, bv_radius)
         backtracks = backtracks + (~passed).to(torch.long)
     tx, ty, px, py, test, passed = accepted
     if not bool(passed.all().item()):
         fail = (~passed).view(-1, 1)
-        tau_try = torch.where(fail, torch.full_like(tau_try, fallback_tau), tau_try)
-        s_try = torch.where(fail, torch.full_like(s_try, fallback_s), s_try)
+        tau_next = torch.where(fail, torch.full_like(tau_try, fallback_tau), tau_try)
+        s_next = torch.where(fail, torch.full_like(s_try, fallback_s), s_try)
+        tau_try, s_try = limit_metric_move(tau_next, s_next, tau_prev, s_prev, bv_radius)
         tx, ty, px, py, test = fbhf_step(prob, x, y, tau_try, s_try, return_test=True)
-        passed = torch.ones_like(test["ell2"], dtype=torch.bool)
+        threshold = safety * test["compat_cap"]
+        passed = (test["zp_m"] <= 1e-24) | ((threshold > 0.0) & (test["ell2"] <= threshold))
+    jump = metric_jump(tau_try, s_try, tau_prev, s_prev)
     stats = {
         "backtracks": backtracks,
         "ell2": test["ell2"].detach(),
         "compat_cap": test["compat_cap"].detach(),
         "tau": tau_try.detach(),
         "s": s_try.detach(),
+        "metric_jump": jump.detach(),
+        "unresolved": (~passed).detach(),
     }
     return tx, ty, px, py, stats
 
@@ -311,6 +330,9 @@ def update_runtime_stats(target, stats):
     target["min_margin"] = min(target["min_margin"], float((stats["compat_cap"] - stats["ell2"]).min().item()))
     target["max_tau_over_chi"] = max(target["max_tau_over_chi"], float((stats["tau"] / target["chi"]).max().item()))
     target["max_s_over_chi"] = max(target["max_s_over_chi"], float((stats["s"] / target["chi"]).max().item()))
+    target["metric_bv_sum"] += float(stats["metric_jump"].max().item())
+    target["max_metric_jump"] = max(target["max_metric_jump"], float(stats["metric_jump"].max().item()))
+    target["unresolved"] += int(stats["unresolved"].sum().item())
 
 
 def fbf_step(prob, x, y, gamma):
@@ -369,7 +391,7 @@ def run_trace(prob, method, steps, net=None, fixed=None, cfg=None, checkpoints=N
                 gx, gy = prob.G(x, y)
                 raw_tau, raw_s = net(prob, x, y, x_prev, y_prev, gx, gy)
                 tau, s = clamp_metric(raw_tau, raw_s, cfg, chi)
-                if cfg.get("bv", True):
+                if cfg.get("bv", True) and not cfg.get("runtime_test", False):
                     radius = cfg["c"] / ((k + 1.0) ** cfg.get("p", 1.1))
                     if tau_prev is not None:
                         tau = bv_limit(tau, tau_prev, radius)
@@ -377,8 +399,15 @@ def run_trace(prob, method, steps, net=None, fixed=None, cfg=None, checkpoints=N
                     tau_prev = tau.detach()
                     s_prev = s.detach()
             if cfg is not None and cfg.get("runtime_test", False):
-                tx, ty, px, py, step_stats = tested_fbhf_step(prob, x, y, tau, s, chi, cfg)
+                radius = None
+                if cfg.get("bv", True):
+                    radius = cfg["c"] / ((k + 1.0) ** cfg.get("p", 1.1))
+                tx, ty, px, py, step_stats = tested_fbhf_step(
+                    prob, x, y, tau, s, chi, cfg, tau_prev=tau_prev, s_prev=s_prev, bv_radius=radius
+                )
                 update_runtime_stats(runtime_stats, step_stats)
+                tau_prev = step_stats["tau"].detach()
+                s_prev = step_stats["s"].detach()
             else:
                 tx, ty, px, py = fbhf_step(prob, x, y, tau, s)
             if anchor:
@@ -565,6 +594,9 @@ def evaluate_main(args, outdir, ckpt=None):
                 "min_margin": float("inf"),
                 "max_tau_over_chi": 0.0,
                 "max_s_over_chi": 0.0,
+                "metric_bv_sum": 0.0,
+                "max_metric_jump": 0.0,
+                "unresolved": 0,
             }
         t0 = time.perf_counter()
         x, y, trace = run_trace(prob, method, args.eval_steps, net=net, fixed=fixed, cfg=cfg, checkpoints=checkpoints, runtime_stats=runtime_stats)

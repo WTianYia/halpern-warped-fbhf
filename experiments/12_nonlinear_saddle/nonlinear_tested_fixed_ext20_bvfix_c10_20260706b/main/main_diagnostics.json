@@ -1,0 +1,62 @@
+{
+  "reference": "Tseng-FBF",
+  "ref_steps": 20000,
+  "ref_self_gap_mean": 0.0,
+  "ref_self_gap_median": 0.0,
+  "ref_self_gap_max": 0.0,
+  "chi": 0.06657659063458442,
+  "LB_bound_max": 14.970211029052734,
+  "LG_bound_max": 15.170210838317871,
+  "fixed_tau": 0.9320722688841818,
+  "fixed_s": 0.23301806722104546,
+  "learned_tau_over_chi_mean_initial": 2.496227741241455,
+  "learned_tau_over_chi_max_initial": 2.496230363845825,
+  "learned_s_over_chi_mean_initial": 2.365408182144165,
+  "learned_s_over_chi_max_initial": 2.4975907802581787,
+  "learned_vs_fixed_wins": 0,
+  "learned_vs_fixed_losses": 64,
+  "learned_vs_fixed_ties": 0,
+  "learned_vs_fixed_sign_p": 1.0842021724855044e-19,
+  "runtime_test_enabled": true,
+  "runtime_test_stats": {
+    "plain-FBHF": {
+      "chi": 0.06657659063458442,
+      "steps": 12800,
+      "backtracks": 0,
+      "max_backtracks": 0,
+      "max_ell2": 0.0014745634980499744,
+      "min_margin": 0.9925335645675659,
+      "max_tau_over_chi": 0.8999999761581421,
+      "max_s_over_chi": 0.8999999761581421,
+      "metric_bv_sum": 0.0,
+      "max_metric_jump": 0.0,
+      "unresolved": 0
+    },
+    "fixed-warped-FBHF": {
+      "chi": 0.06657659063458442,
+      "steps": 12800,
+      "backtracks": 2971,
+      "max_backtracks": 13,
+      "max_ell2": 545.6702880859375,
+      "min_margin": -544.7573852539062,
+      "max_tau_over_chi": 14.0,
+      "max_s_over_chi": 3.5,
+      "metric_bv_sum": 83.06702852249146,
+      "max_metric_jump": 2.2303967475891113,
+      "unresolved": 203
+    },
+    "learned-warped-FBHF": {
+      "chi": 0.06657659063458442,
+      "steps": 12800,
+      "backtracks": 0,
+      "max_backtracks": 0,
+      "max_ell2": 0.012253873981535435,
+      "min_margin": 0.9711177945137024,
+      "max_tau_over_chi": 2.4962844848632812,
+      "max_s_over_chi": 2.497633457183838,
+      "metric_bv_sum": 16.190134048461914,
+      "max_metric_jump": 0.5655755996704102,
+      "unresolved": 0
+    }
+  }
+}
