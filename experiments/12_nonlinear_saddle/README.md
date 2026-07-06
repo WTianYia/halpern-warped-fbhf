@@ -34,6 +34,12 @@ python nonlinear_saddle_experiment.py \
   --skip_scan
 ```
 
+The learned warped-metric pilot uses coordinatewise primal steps and
+samplewise dual steps. The dual-step network receives per-sample Huber values,
+dual variables, gradients, and one-step history features, so the benchmark can
+test whether outlier-level structure gives learning a fair advantage over the
+best fixed warped metric.
+
 Outputs include CSV/JSON metadata and publication-style PDF/PNG/SVG figures:
 
 - `main/main_summary.csv`
@@ -41,4 +47,3 @@ Outputs include CSV/JSON metadata and publication-style PDF/PNG/SVG figures:
 - `main/main_diagnostics.json`
 - `beta_scan/beta_scan_summary.csv`
 - `selection/selection_summary.csv`
-

@@ -148,7 +148,7 @@ class MetricNet(nn.Module):
     def __init__(self, hidden=48):
         super().__init__()
         self.x_net = nn.Sequential(nn.Linear(5, hidden), nn.Tanh(), nn.Linear(hidden, hidden), nn.Tanh(), nn.Linear(hidden, 1))
-        self.s_net = nn.Sequential(nn.Linear(9, hidden), nn.Tanh(), nn.Linear(hidden, hidden), nn.Tanh(), nn.Linear(hidden, 1))
+        self.s_net = nn.Sequential(nn.Linear(8, hidden), nn.Tanh(), nn.Linear(hidden, hidden), nn.Tanh(), nn.Linear(hidden, 1))
 
     def forward(self, prob, x, y, x_prev, y_prev, gx, gy):
         x_feat = torch.stack(
@@ -163,28 +163,34 @@ class MetricNet(nn.Module):
         )
         raw_tau = self.x_net(x_feat).squeeze(-1)
         h, psi = prob.h_and_grad(x)
-        stats = torch.stack(
+        h_mean = h.mean(dim=1, keepdim=True)
+        h_std = h.std(dim=1, keepdim=True).clamp_min(1e-12)
+        psi_abs = psi.abs()
+        psi_mean = psi_abs.mean(dim=1, keepdim=True)
+        psi_std = psi_abs.std(dim=1, keepdim=True).clamp_min(1e-12)
+        y_mean = y.mean(dim=1, keepdim=True)
+        y_std = y.std(dim=1, keepdim=True).clamp_min(1e-12)
+        s_feat = torch.stack(
             [
-                h.mean(dim=1),
-                h.std(dim=1),
-                h.max(dim=1).values,
-                psi.abs().mean(dim=1),
-                y.max(dim=1).values,
-                y.std(dim=1),
-                gx.norm(dim=1) / math.sqrt(prob.n),
-                gy.norm(dim=1) / math.sqrt(prob.m),
-                torch.full((prob.batch,), float(prob.rho), device=x.device, dtype=x.dtype),
+                h,
+                (h - h_mean) / h_std,
+                psi_abs,
+                (psi_abs - psi_mean) / psi_std,
+                y,
+                (y - y_mean) / y_std,
+                gy,
+                y - y_prev,
             ],
-            dim=1,
+            dim=-1,
         )
-        raw_s = self.s_net(stats).squeeze(-1)
+        raw_s = self.s_net(s_feat).squeeze(-1)
         return raw_tau, raw_s
 
 
 def clamp_metric(raw_tau, raw_s, lo, hi, s_lo, s_hi):
     tau = lo + (hi - lo) * torch.sigmoid(raw_tau)
     s = s_lo + (s_hi - s_lo) * torch.sigmoid(raw_s)
-    return tau, s.view(-1, 1)
+    return tau, s
 
 
 def bv_limit(new, old, radius):
