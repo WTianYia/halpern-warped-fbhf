@@ -7,3 +7,6 @@ Thumbs.db
 *.bak
 *.tiff
 experiments/11_high_precision_reference/smoke_local/
+experiments/12_nonlinear_saddle/smoke_local/
+experiments/12_nonlinear_saddle/smoke_remote/
+experiments/12_nonlinear_saddle/nonlinear_run*/

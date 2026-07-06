@@ -1,0 +1,614 @@
+import argparse
+import csv
+import json
+import math
+import time
+from pathlib import Path
+
+import numpy as np
+import torch
+import torch.nn as nn
+import matplotlib.pyplot as plt
+
+
+DEV = "cuda" if torch.cuda.is_available() else "cpu"
+
+
+def set_seed(seed):
+    torch.manual_seed(seed)
+    np.random.seed(seed % (2**32 - 1))
+
+
+def write_csv(path, rows):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not rows:
+        return
+    keys = list(rows[0].keys())
+    with path.open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=keys)
+        w.writeheader()
+        w.writerows(rows)
+
+
+def sign_test_p_value(wins, n):
+    k = min(wins, n - wins)
+    prob = sum(math.comb(n, i) for i in range(k + 1)) / (2**n)
+    return float(min(1.0, 2.0 * prob))
+
+
+def project_simplex(v):
+    """Euclidean projection of each row of v onto the probability simplex."""
+    u, _ = torch.sort(v, dim=1, descending=True)
+    cssv = torch.cumsum(u, dim=1) - 1.0
+    ind = torch.arange(1, v.shape[1] + 1, device=v.device, dtype=v.dtype).view(1, -1)
+    cond = u - cssv / ind > 0
+    rho = cond.sum(dim=1).clamp_min(1)
+    theta = cssv.gather(1, (rho - 1).view(-1, 1)) / rho.to(v.dtype).view(-1, 1)
+    return torch.clamp(v - theta, min=0.0)
+
+
+def huber(r, delta):
+    a = torch.abs(r)
+    return torch.where(a <= delta, 0.5 * r * r, delta * (a - 0.5 * delta))
+
+
+def huber_grad(r, delta):
+    return torch.clamp(r, min=-delta, max=delta)
+
+
+class HuberSaddle:
+    def __init__(self, mat, b, delta, lam, rho):
+        self.mat = mat
+        self.b = b
+        self.delta = float(delta)
+        self.lam = float(lam)
+        self.rho = float(rho)
+        self.batch, self.m, self.n = mat.shape
+        self.u = torch.full((self.batch, self.m), 1.0 / self.m, device=mat.device, dtype=mat.dtype)
+        self._spectral = None
+
+    @staticmethod
+    def make(batch, n, m, seed, delta=0.5, lam=0.1, rho=0.2, outlier_low=0.05, outlier_high=0.2, rank_def=0):
+        gen = torch.Generator(device="cpu")
+        gen.manual_seed(int(seed))
+        mat = torch.randn(batch, m, n, generator=gen) / math.sqrt(n)
+        if rank_def > 0:
+            mat[:, :, -rank_def:] = 0.0
+        x_true = torch.randn(batch, n, generator=gen) / math.sqrt(n)
+        clean = torch.bmm(mat, x_true.unsqueeze(-1)).squeeze(-1)
+        b = clean + 0.03 * torch.randn(batch, m, generator=gen)
+        probs = outlier_low + (outlier_high - outlier_low) * torch.rand(batch, generator=gen)
+        mask = torch.rand(batch, m, generator=gen) < probs.view(batch, 1)
+        signs = torch.where(torch.rand(batch, m, generator=gen) < 0.5, -1.0, 1.0)
+        amp = 4.0 + 4.0 * torch.rand(batch, m, generator=gen)
+        b = b + mask.to(b.dtype) * signs * amp
+        return HuberSaddle(mat.to(DEV), b.to(DEV), delta, lam, rho), x_true.to(DEV)
+
+    def residuals(self, x):
+        return torch.bmm(self.mat, x.unsqueeze(-1)).squeeze(-1) - self.b
+
+    def h_and_grad(self, x):
+        r = self.residuals(x)
+        return huber(r, self.delta), huber_grad(r, self.delta)
+
+    def B(self, x, y):
+        h, psi = self.h_and_grad(x)
+        bx = torch.bmm(self.mat.transpose(1, 2), (y * psi).unsqueeze(-1)).squeeze(-1)
+        by = -h
+        return bx, by
+
+    def C(self, x, y):
+        return self.lam * x, self.rho * (y - self.u)
+
+    def G(self, x, y):
+        bx, by = self.B(x, y)
+        cx, cy = self.C(x, y)
+        return bx + cx, by + cy
+
+    def merit(self, x, y):
+        gx, gy = self.G(x, y)
+        # The y part uses projected gradient residual for the simplex block.
+        py = project_simplex(y - gy)
+        return torch.sqrt((gx * gx).sum(dim=1) + ((y - py) ** 2).sum(dim=1))
+
+    def spectral_norm(self, iters=40):
+        if self._spectral is not None:
+            return self._spectral
+        v = torch.randn(self.batch, self.n, device=self.mat.device)
+        v = v / v.norm(dim=1, keepdim=True).clamp_min(1e-12)
+        for _ in range(iters):
+            av = torch.bmm(self.mat, v.unsqueeze(-1)).squeeze(-1)
+            v = torch.bmm(self.mat.transpose(1, 2), av.unsqueeze(-1)).squeeze(-1)
+            v = v / v.norm(dim=1, keepdim=True).clamp_min(1e-12)
+        av = torch.bmm(self.mat, v.unsqueeze(-1)).squeeze(-1)
+        self._spectral = av.norm(dim=1)
+        return self._spectral
+
+    def LB_bound(self):
+        spec = self.spectral_norm()
+        return spec * spec / self.delta + self.delta * spec
+
+    def beta(self):
+        mc = max(self.lam, self.rho)
+        return float("inf") if mc <= 0 else 1.0 / mc
+
+    def chi(self):
+        beta = self.beta()
+        lb = float(self.LB_bound().max().item())
+        if math.isinf(beta):
+            return 1.0 / max(lb, 1e-12)
+        return 4.0 * beta / (1.0 + math.sqrt(1.0 + 16.0 * beta * beta * lb * lb))
+
+    def LG_bound(self):
+        return self.LB_bound() + max(self.lam, self.rho)
+
+
+class MetricNet(nn.Module):
+    def __init__(self, hidden=48):
+        super().__init__()
+        self.x_net = nn.Sequential(nn.Linear(5, hidden), nn.Tanh(), nn.Linear(hidden, hidden), nn.Tanh(), nn.Linear(hidden, 1))
+        self.s_net = nn.Sequential(nn.Linear(9, hidden), nn.Tanh(), nn.Linear(hidden, hidden), nn.Tanh(), nn.Linear(hidden, 1))
+
+    def forward(self, prob, x, y, x_prev, y_prev, gx, gy):
+        x_feat = torch.stack(
+            [
+                x,
+                gx,
+                x - x_prev,
+                torch.abs(gx),
+                torch.full_like(x, float(prob.lam)),
+            ],
+            dim=-1,
+        )
+        raw_tau = self.x_net(x_feat).squeeze(-1)
+        h, psi = prob.h_and_grad(x)
+        stats = torch.stack(
+            [
+                h.mean(dim=1),
+                h.std(dim=1),
+                h.max(dim=1).values,
+                psi.abs().mean(dim=1),
+                y.max(dim=1).values,
+                y.std(dim=1),
+                gx.norm(dim=1) / math.sqrt(prob.n),
+                gy.norm(dim=1) / math.sqrt(prob.m),
+                torch.full((prob.batch,), float(prob.rho), device=x.device, dtype=x.dtype),
+            ],
+            dim=1,
+        )
+        raw_s = self.s_net(stats).squeeze(-1)
+        return raw_tau, raw_s
+
+
+def clamp_metric(raw_tau, raw_s, lo, hi, s_lo, s_hi):
+    tau = lo + (hi - lo) * torch.sigmoid(raw_tau)
+    s = s_lo + (s_hi - s_lo) * torch.sigmoid(raw_s)
+    return tau, s.view(-1, 1)
+
+
+def bv_limit(new, old, radius):
+    diff = torch.clamp(new - old, min=-radius, max=radius)
+    return old + diff
+
+
+def fbhf_step(prob, x, y, tau, s):
+    gx, gy = prob.G(x, y)
+    px = x - tau * gx
+    py = project_simplex(y - s * gy)
+    bx, by = prob.B(x, y)
+    bpx, bpy = prob.B(px, py)
+    tx = px + tau * (bx - bpx)
+    ty = py + s * (by - bpy)
+    return tx, project_simplex(ty), px, py
+
+
+def fbf_step(prob, x, y, gamma):
+    gx, gy = prob.G(x, y)
+    px = x - gamma * gx
+    py = project_simplex(y - gamma * gy)
+    gpx, gpy = prob.G(px, py)
+    tx = px + gamma * (gx - gpx)
+    ty = py + gamma * (gy - gpy)
+    return tx, project_simplex(ty)
+
+
+def eg_step(prob, x, y, gamma):
+    gx, gy = prob.G(x, y)
+    px = x - gamma * gx
+    py = project_simplex(y - gamma * gy)
+    gpx, gpy = prob.G(px, py)
+    return x - gamma * gpx, project_simplex(y - gamma * gpy)
+
+
+def frb_step(prob, x, y, gx_prev, gy_prev, gamma):
+    gx, gy = prob.G(x, y)
+    tx = x - gamma * (2.0 * gx - gx_prev)
+    ty = project_simplex(y - gamma * (2.0 * gy - gy_prev))
+    return tx, ty, gx, gy
+
+
+def run_trace(prob, method, steps, net=None, fixed=None, cfg=None, checkpoints=None, anchor=False):
+    if checkpoints is None:
+        checkpoints = []
+    checkpoints = set(int(c) for c in checkpoints)
+    x = torch.zeros(prob.batch, prob.n, device=prob.mat.device)
+    y = prob.u.clone()
+    x_prev = x.clone()
+    y_prev = y.clone()
+    tau_prev = None
+    s_prev = None
+    gx_prev, gy_prev = prob.G(x, y)
+    out = {}
+    if 0 in checkpoints:
+        out[0] = (x.clone(), y.clone())
+    chi = prob.chi()
+    lg = float(prob.LG_bound().max().item())
+    gamma_fbf = 0.72 / max(lg, 1e-12)
+    gamma_frb = 0.45 / max(lg, 1e-12)
+    for k in range(1, steps + 1):
+        if method in {"plain", "fixed", "learned"}:
+            if method == "plain":
+                tau = torch.full_like(x, 0.9 * chi)
+                s = torch.full((prob.batch, 1), 0.9 * chi, device=x.device, dtype=x.dtype)
+            elif method == "fixed":
+                tau_v, s_v = fixed
+                tau = torch.full_like(x, tau_v)
+                s = torch.full((prob.batch, 1), s_v, device=x.device, dtype=x.dtype)
+            else:
+                gx, gy = prob.G(x, y)
+                raw_tau, raw_s = net(prob, x, y, x_prev, y_prev, gx, gy)
+                tau, s = clamp_metric(raw_tau, raw_s, cfg["tlo"], cfg["thi"], cfg["slo"], cfg["shi"])
+                if cfg.get("bv", True):
+                    radius = cfg["c"] / ((k + 1.0) ** cfg.get("p", 1.1))
+                    if tau_prev is not None:
+                        tau = bv_limit(tau, tau_prev, radius)
+                        s = bv_limit(s, s_prev, radius)
+                    tau_prev = tau.detach()
+                    s_prev = s.detach()
+            tx, ty, px, py = fbhf_step(prob, x, y, tau, s)
+            if anchor:
+                lam = 1.0 / (k + 2.0)
+                tx = (1 - lam) * tx
+                ty = project_simplex((1 - lam) * ty + lam * prob.u)
+            x_prev, y_prev = x, y
+            x, y = tx, ty
+        elif method == "fbf":
+            x, y = fbf_step(prob, x, y, gamma_fbf)
+        elif method == "eg":
+            x, y = eg_step(prob, x, y, gamma_fbf)
+        elif method == "frb":
+            x, y, gx_prev, gy_prev = frb_step(prob, x, y, gx_prev, gy_prev, gamma_frb)
+        else:
+            raise ValueError(method)
+        if k in checkpoints:
+            out[k] = (x.clone(), y.clone())
+    return x, y, out
+
+
+def rel_error(x, y, xref, yref):
+    denom = torch.sqrt((xref * xref).sum(dim=1) + (yref * yref).sum(dim=1)).clamp_min(1e-12)
+    return torch.sqrt(((x - xref) ** 2).sum(dim=1) + ((y - yref) ** 2).sum(dim=1)) / denom
+
+
+def train_metric(args, outdir):
+    set_seed(args.seed)
+    outdir.mkdir(parents=True, exist_ok=True)
+    net = MetricNet().to(DEV)
+    opt = torch.optim.Adam(net.parameters(), lr=args.lr)
+    cfg = dict(tlo=args.tlo, thi=args.thi, slo=args.slo, shi=args.shi, c=args.bv_c, p=1.1, bv=True)
+    best = float("inf")
+    rows = []
+    for it in range(1, args.train_iters + 1):
+        prob, _ = HuberSaddle.make(
+            args.batch,
+            args.n,
+            args.m,
+            args.seed * 100000 + it,
+            args.delta,
+            args.lam,
+            args.rho,
+            rank_def=0,
+        )
+        x, y, _ = run_trace(prob, "learned", args.train_K, net=net, cfg=cfg)
+        loss = prob.merit(x, y).mean()
+        opt.zero_grad()
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
+        opt.step()
+        if it == 1 or it % args.eval_every == 0:
+            with torch.no_grad():
+                val_prob, _ = HuberSaddle.make(args.batch, args.n, args.m, args.val_seed + it, args.delta, args.lam, args.rho)
+                xv, yv, _ = run_trace(val_prob, "learned", args.train_K, net=net, cfg=cfg)
+                val = val_prob.merit(xv, yv).mean().item()
+                row = {"iter": it, "train_merit": float(loss.item()), "val_merit": val}
+                rows.append(row)
+                if math.isfinite(val) and val < best:
+                    best = val
+                    torch.save(net.state_dict(), outdir / "nonlinear_saddle_metric.pt")
+                    row["saved"] = 1
+                else:
+                    row["saved"] = 0
+                print(json.dumps(row), flush=True)
+    write_csv(outdir / "train_log.csv", rows)
+    return outdir / "nonlinear_saddle_metric.pt"
+
+
+def tune_fixed(prob, ref_x, ref_y, candidates, eval_steps):
+    best = None
+    rows = []
+    for tau, s in candidates:
+        x, y, _ = run_trace(prob, "fixed", eval_steps, fixed=(tau, s))
+        err = rel_error(x, y, ref_x, ref_y).mean().item()
+        merit = prob.merit(x, y).mean().item()
+        row = {"tau": tau, "s": s, "mean_error": err, "mean_merit": merit}
+        rows.append(row)
+        if math.isfinite(err) and (best is None or err < best[0]):
+            best = (err, tau, s)
+    return best, rows
+
+
+def evaluate_main(args, outdir, ckpt=None):
+    outdir.mkdir(parents=True, exist_ok=True)
+    prob, _ = HuberSaddle.make(args.ntest, args.n, args.m, args.eval_seed, args.delta, args.lam, args.rho)
+    chi = prob.chi()
+    fixed_grid = []
+    for mt in args.fixed_tau_mult:
+        for ms in args.fixed_s_mult:
+            fixed_grid.append((float(mt * chi), float(ms * chi)))
+    ref_x, ref_y, saved = run_trace(prob, "fbf", args.ref_steps, checkpoints=[args.ref_steps // 2, args.ref_steps])
+    half_x, half_y = saved[args.ref_steps // 2]
+    ref_gap = rel_error(half_x, half_y, ref_x, ref_y)
+    best, fixed_rows = tune_fixed(prob, ref_x, ref_y, fixed_grid, args.eval_steps)
+    fixed_tau, fixed_s = best[1], best[2]
+    write_csv(outdir / "fixed_grid.csv", fixed_rows)
+    cfg = dict(tlo=args.tlo * chi, thi=args.thi * chi, slo=args.slo * chi, shi=args.shi * chi, c=args.bv_c, p=1.1, bv=True)
+    net = None
+    if ckpt is not None and Path(ckpt).exists():
+        net = MetricNet().to(DEV)
+        net.load_state_dict(torch.load(ckpt, map_location=DEV))
+        net.eval()
+    methods = [
+        ("plain-FBHF", "plain", None),
+        ("fixed-warped-FBHF", "fixed", (fixed_tau, fixed_s)),
+        ("Tseng-FBF", "fbf", None),
+        ("extragradient", "eg", None),
+        ("FRB", "frb", None),
+    ]
+    if net is not None:
+        methods.append(("learned-warped-FBHF", "learned", None))
+    checkpoints = sorted(set([0, args.eval_steps // 4, args.eval_steps // 2, args.eval_steps]))
+    curve_rows = []
+    per_rows = []
+    summary = []
+    traces = {}
+    for label, method, fixed in methods:
+        t0 = time.perf_counter()
+        x, y, trace = run_trace(prob, method, args.eval_steps, net=net, fixed=fixed, cfg=cfg, checkpoints=checkpoints)
+        wall = time.perf_counter() - t0
+        err = rel_error(x, y, ref_x, ref_y).detach().cpu().numpy()
+        merit = prob.merit(x, y).detach().cpu().numpy()
+        for i in range(args.ntest):
+            per_rows.append({"method": label, "instance": i, "rel_error": float(err[i]), "merit": float(merit[i])})
+        for k, (tx, ty) in trace.items():
+            e = rel_error(tx, ty, ref_x, ref_y).mean().item()
+            curve_rows.append({"method": label, "iter": k, "dominant_B_calls": dominant_calls(method, k), "mean_rel_error": e})
+        summary.append(
+            {
+                "method": label,
+                "mean_rel_error": float(err.mean()),
+                "std_rel_error": float(err.std(ddof=0)),
+                "median_rel_error": float(np.median(err)),
+                "mean_merit": float(merit.mean()),
+                "wall_time": float(wall),
+                "dominant_B_calls": dominant_calls(method, args.eval_steps),
+            }
+        )
+        traces[label] = err
+    if "learned-warped-FBHF" in traces:
+        wins = int((traces["learned-warped-FBHF"] < traces["fixed-warped-FBHF"]).sum())
+        pval = sign_test_p_value(wins, args.ntest)
+    else:
+        wins, pval = None, None
+    diag = {
+        "reference": "Tseng-FBF",
+        "ref_steps": args.ref_steps,
+        "ref_self_gap_mean": float(ref_gap.mean().item()),
+        "ref_self_gap_median": float(ref_gap.median().item()),
+        "ref_self_gap_max": float(ref_gap.max().item()),
+        "chi": float(chi),
+        "LB_bound_max": float(prob.LB_bound().max().item()),
+        "LG_bound_max": float(prob.LG_bound().max().item()),
+        "fixed_tau": float(fixed_tau),
+        "fixed_s": float(fixed_s),
+        "learned_vs_fixed_wins": wins,
+        "learned_vs_fixed_sign_p": pval,
+    }
+    write_csv(outdir / "main_summary.csv", summary)
+    write_csv(outdir / "main_per_instance.csv", per_rows)
+    write_csv(outdir / "main_curves.csv", curve_rows)
+    with (outdir / "main_diagnostics.json").open("w", encoding="utf-8") as f:
+        json.dump(diag, f, indent=2)
+    make_main_plot(outdir, curve_rows, summary)
+    return summary, diag
+
+
+def dominant_calls(method, k):
+    if method in {"plain", "fixed", "learned"} or "FBHF" in method:
+        return 2 * k
+    if method in {"fbf", "eg"} or method in {"Tseng-FBF", "extragradient"}:
+        return 2 * k
+    if method == "frb" or method == "FRB":
+        return k + 1
+    return k
+
+
+def beta_scan(args, outdir, ckpt=None):
+    rows = []
+    ckpt_path = Path(ckpt) if ckpt else None
+    for rho in args.scan_rho:
+        local = argparse.Namespace(**vars(args))
+        local.rho = float(rho)
+        scan_dir = outdir / f"rho_{rho:g}"
+        summary, diag = evaluate_main(local, scan_dir, ckpt_path)
+        by = {r["method"]: r for r in summary}
+        fixed = by["fixed-warped-FBHF"]["mean_rel_error"]
+        for method, r in by.items():
+            rows.append(
+                {
+                    "rho": float(rho),
+                    "beta_LB": float((1.0 / max(local.lam, local.rho)) * diag["LB_bound_max"]),
+                    "method": method,
+                    "mean_rel_error": r["mean_rel_error"],
+                    "gain_vs_fixed": float(1.0 - r["mean_rel_error"] / fixed) if fixed > 0 else "",
+                }
+            )
+    write_csv(outdir / "beta_scan_summary.csv", rows)
+    make_beta_plot(outdir, rows)
+
+
+def evaluate_selection(args, outdir):
+    outdir.mkdir(parents=True, exist_ok=True)
+    rank_def = max(1, args.rank_def)
+    prob, _ = HuberSaddle.make(args.ntest, args.n, args.m, args.selection_seed, args.delta, 0.0, args.rho, rank_def=rank_def)
+    ref_x, ref_y, _ = run_trace(prob, "plain", args.ref_steps)
+    # Since the last rank_def coordinates are invisible to A and lambda=0, the
+    # minimum-norm representative has zeros in those coordinates.
+    min_x = ref_x.clone()
+    min_x[:, -rank_def:] = 0.0
+    min_y = ref_y
+    starts = [-3.0, 0.0, 3.0]
+    rows = []
+    for start in starts:
+        x0_tail = torch.zeros(prob.batch, prob.n, device=DEV)
+        x0_tail[:, -rank_def:] = start
+        # Run custom initialisation by shifting the invisible component after
+        # every first state; plain keeps it, Halpern damps it to the anchor.
+        x_plain, y_plain = x0_tail.clone(), prob.u.clone()
+        x_hal, y_hal = x0_tail.clone(), prob.u.clone()
+        chi = prob.chi()
+        for k in range(1, args.eval_steps + 1):
+            x_plain, y_plain, _, _ = fbhf_step(prob, x_plain, y_plain, torch.full_like(x_plain, 0.9 * chi), torch.full((prob.batch, 1), 0.9 * chi, device=DEV))
+            tx, ty, _, _ = fbhf_step(prob, x_hal, y_hal, torch.full_like(x_hal, 0.9 * chi), torch.full((prob.batch, 1), 0.9 * chi, device=DEV))
+            lam = 1.0 / (k + 2.0)
+            x_hal = (1 - lam) * tx
+            y_hal = project_simplex((1 - lam) * ty + lam * prob.u)
+        for label, x, y in [("plain-FBHF", x_plain, y_plain), ("Halpern-FBHF", x_hal, y_hal)]:
+            dist = rel_error(x, y, min_x, min_y).detach().cpu().numpy()
+            tail = x[:, -rank_def:].norm(dim=1).detach().cpu().numpy()
+            rows.append({"start_tail": start, "method": label, "mean_dist_to_min_norm": float(dist.mean()), "mean_tail_norm": float(tail.mean())})
+    write_csv(outdir / "selection_summary.csv", rows)
+    make_selection_plot(outdir, rows)
+    return rows
+
+
+def make_main_plot(outdir, curves, summary):
+    outdir = Path(outdir)
+    fig, ax = plt.subplots(figsize=(4.8, 3.2))
+    for method in sorted(set(r["method"] for r in curves)):
+        xs = [r["dominant_B_calls"] for r in curves if r["method"] == method]
+        ys = [r["mean_rel_error"] for r in curves if r["method"] == method]
+        ax.plot(xs, ys, marker="o", linewidth=1.5, markersize=3, label=method)
+    ax.set_yscale("log")
+    ax.set_xlabel("dominant B evaluations")
+    ax.set_ylabel("relative error to high-precision reference")
+    ax.legend(fontsize=7, frameon=False)
+    ax.grid(True, which="both", linewidth=0.3, alpha=0.4)
+    fig.tight_layout()
+    for ext in ["pdf", "png", "svg"]:
+        fig.savefig(outdir / f"fig_nonlinear_main.{ext}", dpi=300)
+    plt.close(fig)
+
+
+def make_beta_plot(outdir, rows):
+    outdir = Path(outdir)
+    fig, ax = plt.subplots(figsize=(4.8, 3.2))
+    methods = [m for m in sorted(set(r["method"] for r in rows)) if m != "fixed-warped-FBHF"]
+    for method in methods:
+        sub = [r for r in rows if r["method"] == method]
+        xs = [r["beta_LB"] for r in sub]
+        ys = [r["gain_vs_fixed"] for r in sub]
+        ax.plot(xs, ys, marker="o", linewidth=1.5, markersize=3, label=method)
+    ax.axhline(0, color="black", linewidth=0.7)
+    ax.set_xscale("log")
+    ax.set_xlabel(r"$\beta L_B$ estimate")
+    ax.set_ylabel("gain vs fixed warped FBHF")
+    ax.legend(fontsize=7, frameon=False)
+    ax.grid(True, which="both", linewidth=0.3, alpha=0.4)
+    fig.tight_layout()
+    for ext in ["pdf", "png", "svg"]:
+        fig.savefig(outdir / f"fig_beta_scan.{ext}", dpi=300)
+    plt.close(fig)
+
+
+def make_selection_plot(outdir, rows):
+    outdir = Path(outdir)
+    fig, ax = plt.subplots(figsize=(4.2, 3.0))
+    labels = sorted(set(r["method"] for r in rows))
+    starts = sorted(set(r["start_tail"] for r in rows))
+    width = 0.35
+    x = np.arange(len(starts))
+    for j, label in enumerate(labels):
+        vals = [next(r["mean_tail_norm"] for r in rows if r["method"] == label and r["start_tail"] == s) for s in starts]
+        ax.bar(x + (j - 0.5) * width, vals, width=width, label=label)
+    ax.set_xticks(x)
+    ax.set_xticklabels([str(s) for s in starts])
+    ax.set_xlabel("initial invisible component")
+    ax.set_ylabel("tail norm after fixed budget")
+    ax.legend(fontsize=7, frameon=False)
+    fig.tight_layout()
+    for ext in ["pdf", "png", "svg"]:
+        fig.savefig(outdir / f"fig_selection_nonlinear.{ext}", dpi=300)
+    plt.close(fig)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--outdir", default="nonlinear_run")
+    ap.add_argument("--seed", type=int, default=31)
+    ap.add_argument("--val_seed", type=int, default=7001)
+    ap.add_argument("--eval_seed", type=int, default=9001)
+    ap.add_argument("--selection_seed", type=int, default=9101)
+    ap.add_argument("--n", type=int, default=200)
+    ap.add_argument("--m", type=int, default=500)
+    ap.add_argument("--batch", type=int, default=16)
+    ap.add_argument("--ntest", type=int, default=64)
+    ap.add_argument("--delta", type=float, default=0.5)
+    ap.add_argument("--lam", type=float, default=0.1)
+    ap.add_argument("--rho", type=float, default=0.2)
+    ap.add_argument("--rank_def", type=int, default=20)
+    ap.add_argument("--train_K", type=int, default=40)
+    ap.add_argument("--eval_steps", type=int, default=1000)
+    ap.add_argument("--ref_steps", type=int, default=100000)
+    ap.add_argument("--train_iters", type=int, default=3000)
+    ap.add_argument("--eval_every", type=int, default=100)
+    ap.add_argument("--lr", type=float, default=1e-3)
+    ap.add_argument("--tlo", type=float, default=0.25)
+    ap.add_argument("--thi", type=float, default=2.0)
+    ap.add_argument("--slo", type=float, default=0.25)
+    ap.add_argument("--shi", type=float, default=2.0)
+    ap.add_argument("--bv_c", type=float, default=0.5)
+    ap.add_argument("--fixed_tau_mult", nargs="+", type=float, default=[0.5, 0.9, 1.3, 1.7])
+    ap.add_argument("--fixed_s_mult", nargs="+", type=float, default=[0.5, 0.9, 1.3, 1.7])
+    ap.add_argument("--scan_rho", nargs="+", type=float, default=[0.05, 0.1, 0.2, 0.5, 1.0])
+    ap.add_argument("--skip_train", action="store_true")
+    ap.add_argument("--skip_scan", action="store_true")
+    ap.add_argument("--skip_selection", action="store_true")
+    ap.add_argument("--ckpt", default="")
+    args = ap.parse_args()
+    outdir = Path(args.outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+    with (outdir / "protocol.json").open("w", encoding="utf-8") as f:
+        json.dump(vars(args) | {"device": DEV}, f, indent=2)
+    ckpt = Path(args.ckpt) if args.ckpt else outdir / "nonlinear_saddle_metric.pt"
+    if not args.skip_train and not ckpt.exists():
+        ckpt = train_metric(args, outdir)
+    evaluate_main(args, outdir / "main", ckpt if ckpt.exists() else None)
+    if not args.skip_scan:
+        beta_scan(args, outdir / "beta_scan", ckpt if ckpt.exists() else None)
+    if not args.skip_selection:
+        evaluate_selection(args, outdir / "selection")
+
+
+if __name__ == "__main__":
+    main()
